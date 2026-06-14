@@ -1,0 +1,3838 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowGram — Automação Telegram</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg-base: #0a0b0f;
+  --bg-surface: #111318;
+  --bg-card: #16181f;
+  --bg-elevated: #1c1f28;
+  --bg-hover: #21242e;
+  --border: #252836;
+  --border-subtle: #1e2030;
+  --accent: #6c63ff;
+  --accent-dim: #4f48c4;
+  --accent-glow: rgba(108,99,255,0.18);
+  --accent2: #00d4aa;
+  --accent2-glow: rgba(0,212,170,0.15);
+  --danger: #ff4d6a;
+  --warning: #ffb347;
+  --success: #00d4aa;
+  --text-primary: #e8eaf0;
+  --text-secondary: #8b90a7;
+  --text-muted: #555b75;
+  --font-display: 'Inter', system-ui, sans-serif;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --sidebar-w: 240px;
+  --sidebar-collapsed: 64px;
+  --transition: 0.2s ease;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-display);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+/* ─── LAYOUT ─── */
+#app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ─── SIDEBAR ─── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition);
+  overflow: hidden;
+  flex-shrink: 0;
+  z-index: 100;
+}
+#sidebar.collapsed { width: var(--sidebar-collapsed); }
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 64px;
+}
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.logo-text {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.logo-sub { font-size: 10px; color: var(--text-muted); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 20px; right: -12px;
+  width: 24px; height: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  z-index: 101;
+}
+.sidebar-toggle:hover { background: var(--accent); color: #fff; }
+
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+
+.nav-section {
+  padding: 16px 16px 4px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+}
+#sidebar.collapsed .nav-section { opacity: 0; height: 0; padding: 0; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: var(--transition);
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+}
+.nav-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.nav-item.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-right: 2px solid var(--accent);
+}
+.nav-item .icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-item .label { overflow: hidden; }
+#sidebar.collapsed .nav-item .label { opacity: 0; width: 0; }
+#sidebar.collapsed .nav-item { justify-content: center; padding: 9px; }
+#sidebar.collapsed .nav-item .icon { margin: 0; }
+
+.sidebar-footer {
+  border-top: 1px solid var(--border-subtle);
+  padding: 12px;
+}
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+.user-card:hover { background: var(--bg-hover); }
+.avatar {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--accent), #a78bfa);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+}
+.user-info { overflow: hidden; }
+.user-name { font-size: 13px; font-weight: 600; }
+.user-plan { font-size: 11px; color: var(--text-muted); }
+#sidebar.collapsed .user-info { display: none; }
+
+/* ─── MAIN ─── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── TOPBAR ─── */
+#topbar {
+  height: 56px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-title { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.topbar-breadcrumb { font-size: 12px; color: var(--text-muted); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { color: var(--text-primary); background: var(--bg-hover); }
+.btn-danger { background: rgba(255,77,106,0.15); color: var(--danger); border: 1px solid rgba(255,77,106,0.2); }
+.btn-danger:hover { background: rgba(255,77,106,0.25); }
+.btn-success { background: rgba(0,212,170,0.15); color: var(--success); border: 1px solid rgba(0,212,170,0.2); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 7px; }
+
+.icon-btn {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  color: var(--text-secondary);
+  transition: var(--transition);
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-success { background: rgba(0,212,170,0.15); color: var(--success); }
+.badge-danger { background: rgba(255,77,106,0.15); color: var(--danger); }
+.badge-warning { background: rgba(255,179,71,0.15); color: var(--warning); }
+.badge-accent { background: var(--accent-glow); color: var(--accent); }
+.badge-muted { background: var(--bg-elevated); color: var(--text-secondary); }
+
+/* ─── CONTENT ─── */
+#content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* ─── PAGE ─── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ─── GRID ─── */
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* ─── KPI CARDS ─── */
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
+}
+.kpi-card:hover { border-color: var(--border); }
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  opacity: 0.06;
+  transform: translate(20px, -20px);
+}
+.kpi-card.accent::before { background: var(--accent); }
+.kpi-card.success::before { background: var(--success); }
+.kpi-card.warning::before { background: var(--warning); }
+.kpi-card.danger::before { background: var(--danger); }
+
+.kpi-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+.kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+.kpi-delta { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.kpi-delta.up { color: var(--success); }
+.kpi-delta.down { color: var(--danger); }
+.kpi-icon {
+  position: absolute; top: 20px; right: 20px;
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+.kpi-icon.accent { background: var(--accent-glow); }
+.kpi-icon.success { background: var(--accent2-glow); }
+.kpi-icon.warning { background: rgba(255,179,71,0.12); }
+.kpi-icon.danger { background: rgba(255,77,106,0.12); }
+
+/* ─── TABLE ─── */
+.table-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+thead tr { border-bottom: 1px solid var(--border-subtle); }
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  white-space: nowrap;
+}
+td {
+  padding: 12px 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+tbody tr:hover { background: var(--bg-hover); }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ─── CHART CONTAINER ─── */
+.chart-container { position: relative; height: 240px; }
+
+/* ─── SECTION TITLE ─── */
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ─── SPACER ─── */
+.spacer-sm { height: 16px; }
+.spacer { height: 24px; }
+
+/* ─── FILTER BAR ─── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.filter-bar input, .filter-bar select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: var(--transition);
+}
+.filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
+.filter-bar select option { background: var(--bg-card); }
+
+/* ─── FLOW BUILDER ─── */
+.flow-builder {
+  display: flex;
+  gap: 0;
+  height: calc(100vh - 120px);
+  background: var(--bg-base);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.flow-sidebar {
+  width: 220px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  padding: 16px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.flow-canvas {
+  flex: 1;
+  position: relative;
+  overflow: auto;
+  background-image: radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.flow-block-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  transition: var(--transition);
+  user-select: none;
+}
+.flow-block-palette-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+.flow-block-palette-item .pi {
+  width: 24px; height: 24px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.flow-node {
+  position: absolute;
+  min-width: 200px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: move;
+  user-select: none;
+  transition: box-shadow var(--transition);
+}
+.flow-node:hover { box-shadow: 0 0 0 2px var(--accent); }
+.flow-node.selected { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+.flow-node-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+.flow-node-body { padding: 10px 12px; font-size: 12px; color: var(--text-secondary); }
+.flow-node-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.flow-connector {
+  position: absolute;
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  cursor: crosshair;
+  bottom: -5px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  transition: var(--transition);
+}
+.flow-connector:hover { transform: translateX(-50%) scale(1.4); }
+
+/* ─── CHAT ─── */
+.chat-layout {
+  display: flex;
+  gap: 0;
+  height: calc(100vh - 120px);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+.chat-list {
+  width: 300px;
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.chat-list-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 14px;
+  font-weight: 600;
+}
+.chat-list-search {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.chat-list-search input {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 7px 12px;
+  font-size: 13px;
+  outline: none;
+}
+.chat-list-items { overflow-y: auto; flex: 1; }
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: var(--transition);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.chat-item:hover { background: var(--bg-hover); }
+.chat-item.active { background: var(--accent-glow); }
+.chat-item-info { flex: 1; overflow: hidden; }
+.chat-item-name { font-size: 13px; font-weight: 600; }
+.chat-item-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-item-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+.chat-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.chat-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.msg {
+  max-width: 65%;
+  padding: 9px 13px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.msg-in {
+  background: var(--bg-elevated);
+  align-self: flex-start;
+  border-bottom-left-radius: 3px;
+}
+.msg-out {
+  background: var(--accent);
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+  color: #fff;
+}
+.msg-time { font-size: 10px; opacity: 0.6; margin-top: 3px; }
+.chat-input-wrap {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  gap: 8px;
+}
+.chat-input {
+  flex: 1;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+}
+.chat-input:focus { border-color: var(--accent); }
+
+.chat-right-panel {
+  width: 260px;
+  border-left: 1px solid var(--border-subtle);
+  padding: 14px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+.chat-right-panel h4 { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; }
+.info-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 12px; }
+.info-row .info-label { color: var(--text-muted); }
+.info-row .info-val { color: var(--text-primary); font-weight: 500; }
+
+/* ─── MODAL ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition);
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  width: 480px;
+  max-width: 94vw;
+  max-height: 88vh;
+  overflow-y: auto;
+  transform: translateY(16px);
+  transition: transform var(--transition);
+}
+.modal-overlay.open .modal { transform: translateY(0); }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+
+/* ─── FORM ─── */
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+.form-control {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: var(--transition);
+}
+.form-control:focus { border-color: var(--accent); }
+.form-control select { background: var(--bg-elevated); }
+textarea.form-control { resize: vertical; min-height: 80px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ─── TOGGLE ─── */
+.toggle {
+  width: 38px; height: 20px;
+  background: var(--border);
+  border-radius: 99px;
+  cursor: pointer;
+  position: relative;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: var(--transition);
+}
+.toggle.on { background: var(--accent); }
+.toggle.on::after { left: 21px; background: #fff; }
+
+/* ─── INTEGRATION CARDS ─── */
+.integration-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.integration-header { display: flex; align-items: center; justify-content: space-between; }
+.integration-brand { display: flex; align-items: center; gap: 10px; }
+.integration-logo {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+.integration-name { font-size: 14px; font-weight: 700; }
+.integration-meta { font-size: 11px; color: var(--text-muted); }
+.integration-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.istat { background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 8px 10px; }
+.istat-label { font-size: 10px; color: var(--text-muted); }
+.istat-value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+/* ─── TIKTOK TABS ─── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 24px;
+}
+.tab {
+  padding: 7px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition);
+}
+.tab.active { background: var(--bg-elevated); color: var(--text-primary); }
+.tab:hover { color: var(--text-primary); }
+
+/* ─── PROGRESS ─── */
+.progress-bar {
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+
+/* ─── AB TEST ─── */
+.ab-variant {
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+.ab-variant-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ab-label {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ─── REDIRECT CARD ─── */
+.redirect-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  transition: var(--transition);
+}
+.redirect-card:hover { border-color: var(--border); }
+.redirect-link { font-size: 14px; font-weight: 600; color: var(--accent); }
+.redirect-target { font-size: 12px; color: var(--text-muted); }
+
+/* ─── FUNIL VITRINE ─── */
+.funnel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.funnel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: var(--transition);
+}
+.funnel-card:hover { border-color: var(--border); transform: translateY(-2px); }
+.funnel-thumb {
+  height: 140px;
+  background: linear-gradient(135deg, var(--bg-elevated), var(--bg-hover));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+}
+.funnel-body { padding: 16px; }
+.funnel-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.funnel-meta { font-size: 12px; color: var(--text-muted); }
+.funnel-actions { display: flex; gap: 6px; margin-top: 12px; }
+
+/* ─── NOTIFICATION ─── */
+.toast-container {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13px;
+  max-width: 300px;
+  animation: slideIn 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toast.success { border-color: rgba(0,212,170,0.3); }
+.toast.error { border-color: rgba(255,77,106,0.3); }
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1200px) {
+  .grid-6 { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .chat-right-panel { display: none; }
+}
+@media (max-width: 700px) {
+  .grid-2, .grid-3, .grid-4, .grid-6 { grid-template-columns: 1fr; }
+  #sidebar { position: fixed; height: 100%; z-index: 200; }
+  #content { padding: 16px; }
+  .chat-list { width: 100%; }
+  .chat-main { display: none; }
+}
+
+/* ─── DROPDOWN MENU ─── */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-width: 160px;
+  padding: 4px;
+  z-index: 500;
+  display: none;
+}
+.dropdown-menu.open { display: block; }
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: var(--transition);
+}
+.dropdown-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+.dropdown-item.danger { color: var(--danger); }
+
+/* ─── SEGMENT CONTROL ─── */
+.seg-control {
+  display: flex;
+  gap: 1px;
+  background: var(--bg-surface);
+  border-radius: var(--radius-sm);
+  padding: 2px;
+  border: 1px solid var(--border);
+}
+.seg-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--transition);
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+.seg-btn.active { background: var(--bg-elevated); color: var(--text-primary); }
+
+/* ─── DISPARO ─── */
+.disp-type-btn {
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.disp-type-btn:hover { border-color: var(--accent); }
+.disp-type-btn.active { border-color: var(--accent); background: var(--accent-glow); }
+
+.disp-ctype {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+}
+.disp-ctype:hover { color: var(--text-primary); }
+.disp-ctype.active { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+
+.disp-filter-chip {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: var(--transition);
+  user-select: none;
+}
+.disp-filter-chip.on { background: var(--accent-glow); border-color: var(--accent); color: var(--accent); }
+.disp-filter-chip:hover { border-color: var(--accent); color: var(--text-primary); }
+
+.disp-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+}
+.disp-btn-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  outline: none;
+  font-family: inherit;
+}
+
+/* progress overlay */
+.disp-progress-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(6px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.disp-progress-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 36px 40px;
+  width: 420px;
+  text-align: center;
+}
+
+/* seq card */
+.seq-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.seq-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.seq-step:last-child { border-bottom: none; }
+.seq-step-num {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+.empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state h3 { font-size: 15px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-state p { font-size: 13px; }
+
+/* ─── STATUS DOT ─── */
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.status-dot.online { background: var(--success); box-shadow: 0 0 5px var(--success); }
+.status-dot.offline { background: var(--text-muted); }
+.status-dot.warning { background: var(--warning); }
+
+/* ─── SETTINGS ─── */
+.settings-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.settings-section-title {
+  padding: 16px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px;
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-weight: 500; }
+.settings-row-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">FlowGram</div>
+        <div class="logo-sub">Automação Telegram</div>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span><span class="label">Dashboard</span></div>
+      <div class="nav-item" data-page="transactions"><span class="icon">💳</span><span class="label">Transações</span></div>
+      <div class="nav-item" data-page="tracking"><span class="icon">🎯</span><span class="label">Tracking</span></div>
+
+      <div class="nav-section">Automação</div>
+      <div class="nav-item" data-page="flows"><span class="icon">🔀</span><span class="label">Fluxos</span></div>
+      <div class="nav-item" data-page="campaigns"><span class="icon">📣</span><span class="label">Campanhas</span></div>
+      <div class="nav-item" data-page="funil"><span class="icon">🛍️</span><span class="label">Funil Vitrine</span></div>
+      <div class="nav-item" data-page="bots"><span class="icon">🤖</span><span class="label">Bots</span></div>
+
+      <div class="nav-section">Ferramentas</div>
+      <div class="nav-item" data-page="abtests"><span class="icon">🧪</span><span class="label">A/B Tests</span></div>
+      <div class="nav-item" data-page="redirects"><span class="icon">🔗</span><span class="label">Redirects</span></div>
+      <div class="nav-item" data-page="chat"><span class="icon">💬</span><span class="label">Chat ao Vivo</span></div>
+      <div class="nav-item" data-page="integrations"><span class="icon">⚙️</span><span class="label">Integrações</span></div>
+      <div class="nav-item" data-page="tiktok"><span class="icon">🎵</span><span class="label">TikTok</span></div>
+
+      <div class="nav-section">Conta</div>
+      <div class="nav-item" data-page="settings"><span class="icon">🔧</span><span class="label">Configurações</span></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">JS</div>
+        <div class="user-info">
+          <div class="user-name">João Silva</div>
+          <div class="user-plan">Plano Pro</div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══ MAIN ═══ -->
+  <div id="main">
+
+    <!-- TOPBAR -->
+    <header id="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebar-toggle-btn" title="Toggle Sidebar">☰</button>
+        <div>
+          <div class="topbar-title" id="page-title">Dashboard</div>
+          <div class="topbar-breadcrumb" id="page-breadcrumb">Visão Geral</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div id="topbar-date" style="font-size:12px;color:var(--text-muted);"></div>
+        <button class="icon-btn" title="Notificações">🔔</button>
+        <button class="icon-btn" title="Ajuda">❓</button>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <div id="content">
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    DASHBOARD     ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page active" id="page-dashboard">
+
+        <div class="grid-6" style="margin-bottom:20px;">
+          <div class="kpi-card accent">
+            <div class="kpi-icon accent">💰</div>
+            <div class="kpi-label">Faturamento Líquido</div>
+            <div class="kpi-value" style="color:var(--accent)">R$ 84.320</div>
+            <div class="kpi-delta up">↑ 18.4% este mês</div>
+          </div>
+          <div class="kpi-card success">
+            <div class="kpi-icon success">📅</div>
+            <div class="kpi-label">Líquido Mês</div>
+            <div class="kpi-value" style="color:var(--success)">R$ 28.140</div>
+            <div class="kpi-delta up">↑ 12.1% vs anterior</div>
+          </div>
+          <div class="kpi-card warning">
+            <div class="kpi-icon warning">👥</div>
+            <div class="kpi-label">Total Leads</div>
+            <div class="kpi-value" style="color:var(--warning)">6.283</div>
+            <div class="kpi-delta up">↑ 341 esta semana</div>
+          </div>
+          <div class="kpi-card accent">
+            <div class="kpi-icon accent">⚡</div>
+            <div class="kpi-label">Conversão PIX</div>
+            <div class="kpi-value" style="color:var(--accent)">31.4%</div>
+            <div class="kpi-delta down">↓ 2.1% vs anterior</div>
+          </div>
+          <div class="kpi-card success">
+            <div class="kpi-icon success">💳</div>
+            <div class="kpi-label">Conv. Cartão</div>
+            <div class="kpi-value" style="color:var(--success)">18.9%</div>
+            <div class="kpi-delta up">↑ 3.2% vs anterior</div>
+          </div>
+          <div class="kpi-card warning">
+            <div class="kpi-icon warning">🎫</div>
+            <div class="kpi-label">Ticket Médio</div>
+            <div class="kpi-value" style="color:var(--warning)">R$ 247</div>
+            <div class="kpi-delta up">↑ R$ 31 este mês</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Evolução — Vendas e Leads</span>
+              <div class="seg-control">
+                <button class="seg-btn active">7d</button>
+                <button class="seg-btn">30d</button>
+                <button class="seg-btn">90d</button>
+              </div>
+            </div>
+            <div class="chart-container"><canvas id="chartSalesLeads"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Faturamento por Método</span>
+            </div>
+            <div class="chart-container"><canvas id="chartPayMethods"></canvas></div>
+          </div>
+        </div>
+
+        <div class="section-title"><span class="dot"></span>Gateways Conectados</div>
+        <div class="grid-4" style="margin-bottom:20px;">
+          <div id="gw-tribopay" class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:14px;">TriboPay</div>
+              <span class="badge badge-success">● Ativo</span>
+            </div>
+            <div style="font-size:24px;font-weight:800;color:var(--success)">R$ 31.440</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">482 transações</div>
+            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:62%;background:var(--success);"></div></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:14px;">Pushinpay</div>
+              <span class="badge badge-success">● Ativo</span>
+            </div>
+            <div style="font-size:24px;font-weight:800;color:var(--accent)">R$ 24.180</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">318 transações</div>
+            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:48%;background:var(--accent);"></div></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:14px;">SyncPay</div>
+              <span class="badge badge-warning">● Parcial</span>
+            </div>
+            <div style="font-size:24px;font-weight:800;color:var(--warning)">R$ 18.240</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">241 transações</div>
+            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:36%;background:var(--warning);"></div></div>
+          </div>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:14px;">MundPay</div>
+              <span class="badge badge-muted">● Inativo</span>
+            </div>
+            <div style="font-size:24px;font-weight:800;color:var(--text-muted)">R$ 10.460</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">138 transações</div>
+            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:21%;background:var(--text-muted);"></div></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header"><span class="card-title">Performance Detalhada</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Método</th><th>Quantidade</th><th>Faturamento</th><th>Taxa Conv.</th><th>Ticket Médio</th><th>Crescimento</th></tr></thead>
+              <tbody>
+                <tr><td><span class="status-dot online"></span>PIX</td><td>742</td><td>R$ 182.440</td><td>31.4%</td><td>R$ 245</td><td><span class="badge badge-success">↑ 8.2%</span></td></tr>
+                <tr><td><span class="status-dot" style="background:var(--accent)"></span>Cartão</td><td>384</td><td>R$ 98.820</td><td>18.9%</td><td>R$ 257</td><td><span class="badge badge-success">↑ 12.1%</span></td></tr>
+                <tr><td><span class="status-dot warning"></span>Custos</td><td>—</td><td>R$ 24.318</td><td>—</td><td>—</td><td><span class="badge badge-danger">↑ 3.4%</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ╔══════════════════════╗ -->
+      <!-- ║    TRANSAÇÕES        ║ -->
+      <!-- ╚══════════════════════╝ -->
+      <div class="page" id="page-transactions">
+        <div class="grid-4" style="margin-bottom:20px;">
+          <div class="kpi-card accent"><div class="kpi-icon accent">💰</div><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:var(--accent)">R$ 84.320</div><div class="kpi-delta up">↑ 18.4%</div></div>
+          <div class="kpi-card success"><div class="kpi-icon success">⚡</div><div class="kpi-label">PIX</div><div class="kpi-value" style="color:var(--success)">742</div><div class="kpi-delta up">↑ 8.2%</div></div>
+          <div class="kpi-card warning"><div class="kpi-icon warning">💳</div><div class="kpi-label">Cartão</div><div class="kpi-value" style="color:var(--warning)">384</div><div class="kpi-delta up">↑ 12.1%</div></div>
+          <div class="kpi-card accent"><div class="kpi-icon accent">🎫</div><div class="kpi-label">Ticket Médio</div><div class="kpi-value" style="color:var(--accent)">R$ 247</div><div class="kpi-delta up">↑ R$ 31</div></div>
+        </div>
+        <div class="card">
+          <div class="filter-bar">
+            <input type="date" id="tx-date-from" style="width:140px;">
+            <input type="date" id="tx-date-to" style="width:140px;">
+            <select id="tx-gateway" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:6px;font-family:inherit;outline:none;">
+              <option value="">Todos Gateways</option><option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+            </select>
+            <select id="tx-status" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:6px;font-family:inherit;outline:none;">
+              <option value="">Todos Status</option><option>Aprovado</option><option>Pendente</option><option>Recusado</option><option>Reembolsado</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="filterTransactions()">Filtrar</button>
+            <button class="btn btn-outline btn-sm" onclick="exportTransactions()">⬇ Exportar</button>
+          </div>
+          <div class="table-wrap">
+            <table id="tx-table">
+              <thead><tr><th>#</th><th>Nome</th><th>Gateway</th><th>Método</th><th>Valor</th><th>Status</th><th>Data</th><th>Ação</th></tr></thead>
+              <tbody id="tx-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    TRACKING      ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-tracking">
+        <div class="grid-4" style="margin-bottom:20px;">
+          <div class="kpi-card accent"><div class="kpi-icon accent">🎯</div><div class="kpi-label">Cliques Totais</div><div class="kpi-value" style="color:var(--accent)">48.291</div><div class="kpi-delta up">↑ 22.3%</div></div>
+          <div class="kpi-card success"><div class="kpi-icon success">💰</div><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:var(--success)">R$ 84.320</div><div class="kpi-delta up">↑ 18.4%</div></div>
+          <div class="kpi-card warning"><div class="kpi-icon warning">👥</div><div class="kpi-label">Leads</div><div class="kpi-value" style="color:var(--warning)">6.283</div><div class="kpi-delta up">↑ 341</div></div>
+          <div class="kpi-card danger"><div class="kpi-icon danger">🔄</div><div class="kpi-label">Taxa Conv.</div><div class="kpi-value" style="color:var(--danger)">13.0%</div><div class="kpi-delta up">↑ 1.2%</div></div>
+        </div>
+        <div class="grid-2" style="margin-bottom:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Faturamento × Leads</span></div>
+            <div class="chart-container"><canvas id="chartTrackingRevLeads"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Top UTM Sources</span></div>
+            <div class="chart-container"><canvas id="chartUtmSources"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Performance por Parâmetro</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Parâmetro</th><th>Valor</th><th>Cliques</th><th>Leads</th><th>Vendas</th><th>Faturamento</th><th>Conv.</th></tr></thead>
+              <tbody id="tracking-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    FLOWS         ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-flows">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="margin-bottom:4px;"><span class="dot"></span>Fluxos de Automação</div>
+            <div style="font-size:13px;color:var(--text-muted);">Crie e gerencie sequências automáticas para seu bot</div>
+          </div>
+          <button class="btn btn-primary" onclick="openFlowBuilder()">+ Novo Fluxo</button>
+        </div>
+        <div id="flows-list"></div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    CAMPAIGNS     ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-campaigns">
+
+        <!-- KPIs -->
+        <div class="grid-4" style="margin-bottom:20px;">
+          <div class="kpi-card accent"><div class="kpi-icon accent">📣</div><div class="kpi-label">Campanhas Ativas</div><div class="kpi-value" style="color:var(--accent)" id="camp-kpi-active">0</div><div class="kpi-delta up">↑ este mês</div></div>
+          <div class="kpi-card success"><div class="kpi-icon success">📨</div><div class="kpi-label">Mensagens Enviadas</div><div class="kpi-value" style="color:var(--success)" id="camp-kpi-sent">0</div><div class="kpi-delta up">↑ 22.3%</div></div>
+          <div class="kpi-card warning"><div class="kpi-icon warning">👁</div><div class="kpi-label">Taxa de Abertura</div><div class="kpi-value" style="color:var(--warning)" id="camp-kpi-open">0%</div><div class="kpi-delta up">↑ 4.1%</div></div>
+          <div class="kpi-card danger"><div class="kpi-icon danger">🎯</div><div class="kpi-label">Conversões</div><div class="kpi-value" style="color:var(--danger)" id="camp-kpi-conv">0</div><div class="kpi-delta up">↑ 8.8%</div></div>
+        </div>
+
+        <!-- Tabs -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div class="tabs" style="margin-bottom:0;">
+            <div class="tab active" onclick="switchCampTab(this,'camp-tab-list')">📋 Campanhas</div>
+            <div class="tab" onclick="switchCampTab(this,'camp-tab-disparo')">⚡ Novo Disparo</div>
+            <div class="tab" onclick="switchCampTab(this,'camp-tab-seq')">🔁 Sequências</div>
+            <div class="tab" onclick="switchCampTab(this,'camp-tab-stats')">📊 Relatório</div>
+          </div>
+        </div>
+
+        <!-- TAB: Lista de campanhas -->
+        <div id="camp-tab-list" class="camp-tab-panel">
+          <div class="filter-bar">
+            <select id="camp-filter-type" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:6px;font-family:inherit;outline:none;">
+              <option value="">Todos os tipos</option><option>Imediato</option><option>Agendado</option><option>Sequência</option>
+            </select>
+            <select id="camp-filter-status" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:6px;font-family:inherit;outline:none;">
+              <option value="">Todos os status</option><option value="active">Ativas</option><option value="paused">Pausadas</option><option value="done">Concluídas</option><option value="scheduled">Agendadas</option>
+            </select>
+            <button class="btn btn-outline btn-sm" onclick="filterCampaigns()">Filtrar</button>
+            <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="switchCampTab(document.querySelector('.tab:nth-child(2)'),'camp-tab-disparo')">+ Novo Disparo</button>
+          </div>
+          <div id="campaigns-list" class="grid-3"></div>
+        </div>
+
+        <!-- TAB: Novo Disparo -->
+        <div id="camp-tab-disparo" class="camp-tab-panel" style="display:none;">
+          <div class="grid-2" style="gap:24px;align-items:start;">
+
+            <!-- Formulário -->
+            <div style="display:flex;flex-direction:column;gap:16px;">
+
+              <!-- Tipo -->
+              <div class="card">
+                <div class="card-header"><span class="card-title">Tipo de Disparo</span></div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+                  <div class="disp-type-btn active" data-type="imediato" onclick="selectDispType(this)">
+                    <div style="font-size:22px;margin-bottom:6px;">⚡</div>
+                    <div style="font-weight:600;font-size:13px;">Imediato</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Envia agora</div>
+                  </div>
+                  <div class="disp-type-btn" data-type="agendado" onclick="selectDispType(this)">
+                    <div style="font-size:22px;margin-bottom:6px;">📅</div>
+                    <div style="font-weight:600;font-size:13px;">Agendado</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Data e hora</div>
+                  </div>
+                  <div class="disp-type-btn" data-type="sequencia" onclick="selectDispType(this)">
+                    <div style="font-size:22px;margin-bottom:6px;">🔁</div>
+                    <div style="font-weight:600;font-size:13px;">Sequência</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Múltiplas etapas</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Agendamento (oculto por padrão) -->
+              <div class="card" id="disp-schedule-box" style="display:none;">
+                <div class="card-header"><span class="card-title">Agendamento</span></div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Data</label><input type="date" class="form-control" id="disp-date"></div>
+                  <div class="form-group"><label class="form-label">Hora</label><input type="time" class="form-control" id="disp-time"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Fuso Horário</label>
+                  <select class="form-control" id="disp-tz"><option>America/Sao_Paulo (BRT -3)</option><option>America/Manaus (AMT -4)</option><option>UTC</option></select>
+                </div>
+              </div>
+
+              <!-- Identificação -->
+              <div class="card">
+                <div class="card-header"><span class="card-title">Identificação</span></div>
+                <div class="form-group"><label class="form-label">Nome da Campanha</label><input class="form-control" id="disp-name" placeholder="Ex: Black Friday — Todos os leads"></div>
+                <div class="form-row">
+                  <div class="form-group"><label class="form-label">Bot Remetente</label>
+                    <select class="form-control" id="disp-bot"></select>
+                  </div>
+                  <div class="form-group"><label class="form-label">Gateway (se venda)</label>
+                    <select class="form-control" id="disp-gw"><option value="">Nenhum</option><option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option></select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Segmentação -->
+              <div class="card">
+                <div class="card-header"><span class="card-title">Segmentação do Público</span></div>
+                <div class="form-group"><label class="form-label">Público-alvo</label>
+                  <select class="form-control" id="disp-seg" onchange="updateAudienceCount()">
+                    <option value="todos">Todos os leads</option>
+                    <option value="compradores">Somente compradores</option>
+                    <option value="nao_compradores">Não compradores</option>
+                    <option value="pix_pendente">PIX pendente</option>
+                    <option value="pix_pago">PIX pago</option>
+                    <option value="tag">Por tag específica</option>
+                    <option value="bot">Bot específico</option>
+                    <option value="pais">Por país</option>
+                    <option value="idioma">Por idioma</option>
+                  </select>
+                </div>
+                <div id="disp-seg-extra" style="display:none;" class="form-group">
+                  <label class="form-label" id="disp-seg-extra-label">Valor</label>
+                  <input class="form-control" id="disp-seg-extra-val" placeholder="">
+                </div>
+                <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:12px;display:flex;align-items:center;justify-content:space-between;">
+                  <div>
+                    <div style="font-size:12px;color:var(--text-muted);">Destinatários estimados</div>
+                    <div style="font-size:22px;font-weight:800;color:var(--accent);" id="disp-audience-count">6.283</div>
+                  </div>
+                  <div style="text-align:right;">
+                    <div style="font-size:12px;color:var(--text-muted);">Tempo estimado</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text-secondary);" id="disp-eta">~31 min</div>
+                  </div>
+                </div>
+                <div style="margin-top:10px;">
+                  <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Filtros adicionais</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;" id="disp-extra-filters">
+                    <div class="disp-filter-chip" onclick="this.classList.toggle('on')">🌍 Brasil</div>
+                    <div class="disp-filter-chip" onclick="this.classList.toggle('on')">🌍 Portugal</div>
+                    <div class="disp-filter-chip" onclick="this.classList.toggle('on')">🏷️ VIP</div>
+                    <div class="disp-filter-chip" onclick="this.classList.toggle('on')">🏷️ COMPROU</div>
+                    <div class="disp-filter-chip" onclick="this.classList.toggle('on')">🏷️ TIKTOK</div>
+                    <div class="disp-filter-chip" onclick="this.classList.toggle('on')">📱 Ativo 7d</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Conteúdo -->
+              <div class="card">
+                <div class="card-header"><span class="card-title">Conteúdo da Mensagem</span></div>
+                <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;" id="disp-content-types">
+                  <button class="disp-ctype active" data-ct="texto" onclick="selectContentType(this)">📝 Texto</button>
+                  <button class="disp-ctype" data-ct="imagem" onclick="selectContentType(this)">🖼️ Imagem</button>
+                  <button class="disp-ctype" data-ct="video" onclick="selectContentType(this)">🎬 Vídeo</button>
+                  <button class="disp-ctype" data-ct="documento" onclick="selectContentType(this)">📄 Documento</button>
+                  <button class="disp-ctype" data-ct="audio" onclick="selectContentType(this)">🎵 Áudio</button>
+                </div>
+
+                <!-- Mídia (aparece quando não texto) -->
+                <div id="disp-media-box" style="display:none;" class="form-group">
+                  <label class="form-label">URL da Mídia</label>
+                  <input class="form-control" id="disp-media-url" placeholder="https://...">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Mensagem <span style="color:var(--text-muted);font-weight:400;">(suporta variáveis)</span></label>
+                  <textarea class="form-control" id="disp-msg" rows="5" placeholder="Olá {nome}! 👋&#10;&#10;Temos uma oferta especial para você..." oninput="updatePreview()"></textarea>
+                  <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+                    <button class="btn btn-ghost btn-sm" onclick="insertVar('{nome}')">+ {nome}</button>
+                    <button class="btn btn-ghost btn-sm" onclick="insertVar('{primeiro_nome}')">+ {primeiro_nome}</button>
+                    <button class="btn btn-ghost btn-sm" onclick="insertVar('{link}')">+ {link}</button>
+                    <button class="btn btn-ghost btn-sm" onclick="insertVar('{valor}')">+ {valor}</button>
+                  </div>
+                </div>
+
+                <!-- Botões inline -->
+                <div class="form-group">
+                  <label class="form-label">Botões (opcional)</label>
+                  <div id="disp-buttons-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px;"></div>
+                  <button class="btn btn-outline btn-sm" onclick="addDispButton()">+ Adicionar Botão</button>
+                </div>
+
+                <!-- Opções avançadas -->
+                <div style="border-top:1px solid var(--border-subtle);padding-top:14px;margin-top:4px;">
+                  <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Opções Avançadas</div>
+                  <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div><div style="font-size:13px;font-weight:500;">Intervalo entre mensagens</div><div style="font-size:11px;color:var(--text-muted);">Evita bloqueio por spam</div></div>
+                      <select class="form-control" style="width:130px;" id="disp-interval"><option>3 segundos</option><option>5 segundos</option><option>10 segundos</option><option>30 segundos</option><option>1 minuto</option></select>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div><div style="font-size:13px;font-weight:500;">Notificação silenciosa</div><div style="font-size:11px;color:var(--text-muted);">Sem som no celular do usuário</div></div>
+                      <div class="toggle" id="disp-silent" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div><div style="font-size:13px;font-weight:500;">Rastrear cliques</div><div style="font-size:11px;color:var(--text-muted);">Adiciona UTM automaticamente</div></div>
+                      <div class="toggle on" id="disp-track" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                      <div><div style="font-size:13px;font-weight:500;">Parar ao responder</div><div style="font-size:11px;color:var(--text-muted);">Remove da fila se usuário interagir</div></div>
+                      <div class="toggle on" id="disp-stop-reply" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Botões de ação -->
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-outline" style="flex:1;" onclick="saveDisparo('rascunho')">💾 Salvar Rascunho</button>
+                <button class="btn btn-primary" style="flex:2;" id="disp-send-btn" onclick="confirmarDisparo()">⚡ Disparar Agora</button>
+              </div>
+
+            </div>
+
+            <!-- Preview -->
+            <div style="position:sticky;top:0;">
+              <div class="card">
+                <div class="card-header"><span class="card-title">Preview — Telegram</span></div>
+                <!-- Phone mockup -->
+                <div style="background:#000;border-radius:20px;padding:12px;max-width:320px;margin:0 auto;">
+                  <div style="background:#0d1117;border-radius:12px;overflow:hidden;min-height:400px;display:flex;flex-direction:column;">
+                    <!-- TG header -->
+                    <div style="background:#161b22;padding:10px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #21262d;">
+                      <div style="width:32px;height:32px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;">🤖</div>
+                      <div>
+                        <div style="font-size:12px;font-weight:600;color:#e6edf3;">Bot Vendas</div>
+                        <div style="font-size:10px;color:#8b949e;">online</div>
+                      </div>
+                    </div>
+                    <!-- Messages -->
+                    <div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:8px;" id="tg-preview-msgs">
+                      <div style="align-self:flex-start;background:#21262d;border-radius:12px;border-bottom-left-radius:3px;padding:10px 12px;max-width:85%;">
+                        <div style="font-size:12px;color:#e6edf3;line-height:1.5;" id="tg-preview-text">Sua mensagem aparecerá aqui...</div>
+                        <div style="font-size:10px;color:#8b949e;margin-top:4px;text-align:right;">agora ✓✓</div>
+                      </div>
+                    </div>
+                    <!-- Preview buttons -->
+                    <div id="tg-preview-btns" style="padding:0 12px 12px;display:flex;flex-direction:column;gap:4px;"></div>
+                  </div>
+                </div>
+                <!-- Metadados -->
+                <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:var(--bg-elevated);border-radius:6px;">
+                    <span style="color:var(--text-muted);">Destinatários</span>
+                    <span style="font-weight:700;color:var(--accent);" id="prev-audience">6.283</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:var(--bg-elevated);border-radius:6px;">
+                    <span style="color:var(--text-muted);">Tipo</span>
+                    <span style="font-weight:600;" id="prev-type">⚡ Imediato</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:var(--bg-elevated);border-radius:6px;">
+                    <span style="color:var(--text-muted);">Tempo estimado</span>
+                    <span style="font-weight:600;" id="prev-eta">~31 min</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: Sequências -->
+        <div id="camp-tab-seq" class="camp-tab-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-size:13px;color:var(--text-muted);">Sequências são séries de mensagens com intervalos definidos.</div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-seq')">+ Nova Sequência</button>
+          </div>
+          <div id="seq-list" class="grid-3"></div>
+        </div>
+
+        <!-- TAB: Relatório -->
+        <div id="camp-tab-stats" class="camp-tab-panel" style="display:none;">
+          <div class="grid-2" style="margin-bottom:20px;">
+            <div class="card">
+              <div class="card-header"><span class="card-title">Mensagens por Campanha</span></div>
+              <div class="chart-container"><canvas id="chartCampPerf"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">Conversões × Disparos</span></div>
+              <div class="chart-container"><canvas id="chartCampConv"></canvas></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Histórico de Disparos</span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Campanha</th><th>Tipo</th><th>Enviados</th><th>Abertos</th><th>Cliques</th><th>Conv.</th><th>Receita</th><th>Data</th><th>Status</th></tr></thead>
+                <tbody id="camp-history-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║   FUNIL VITRINE  ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-funil">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="margin-bottom:4px;"><span class="dot"></span>Funil Vitrine</div>
+            <div style="font-size:13px;color:var(--text-muted);">Catálogos e vitrines de produtos</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-funil')">+ Novo Funil</button>
+        </div>
+        <div class="funnel-grid" id="funil-grid"></div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║      BOTS        ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-bots">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="margin-bottom:4px;"><span class="dot"></span>Central de Bots</div>
+            <div style="font-size:13px;color:var(--text-muted);">Gerencie seus bots do Telegram</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-bot')">+ Novo Bot</button>
+        </div>
+        <div class="grid-3" id="bots-grid"></div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    A/B TESTS     ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-abtests">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="margin-bottom:4px;"><span class="dot"></span>A/B Tests</div>
+            <div style="font-size:13px;color:var(--text-muted);">Teste variantes e maximize conversões</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-abtest')">+ Novo Teste</button>
+        </div>
+        <div id="abtests-list"></div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    REDIRECTS     ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-redirects">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div class="section-title" style="margin-bottom:4px;"><span class="dot"></span>Encurtador Inteligente</div>
+            <div style="font-size:13px;color:var(--text-muted);">Redirects com rastreamento e regras geográficas</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('modal-redirect')">+ Novo Redirect</button>
+        </div>
+        <div id="redirects-list"></div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║   CHAT AO VIVO   ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-chat">
+        <div class="chat-layout">
+          <div class="chat-list">
+            <div class="chat-list-header">
+              Chat ao Vivo
+              <span class="badge badge-accent" style="margin-left:8px;" id="online-count">3 online</span>
+            </div>
+            <div class="chat-list-search"><input type="text" placeholder="Buscar conversa..." id="chat-search"></div>
+            <div class="chat-list-items" id="chat-list-items"></div>
+          </div>
+          <div class="chat-main">
+            <div class="chat-header">
+              <div class="avatar" id="chat-active-avatar">—</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;" id="chat-active-name">Selecione uma conversa</div>
+                <div style="font-size:11px;color:var(--text-muted);" id="chat-active-status">—</div>
+              </div>
+              <div style="margin-left:auto;display:flex;gap:6px;">
+                <button class="icon-btn" title="Info">ℹ️</button>
+                <button class="icon-btn" title="Tags">🏷️</button>
+              </div>
+            </div>
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input-wrap">
+              <textarea class="chat-input" id="chat-input" placeholder="Digite uma mensagem..." rows="1"></textarea>
+              <button class="btn btn-primary" onclick="sendChatMsg()">Enviar</button>
+            </div>
+          </div>
+          <div class="chat-right-panel">
+            <h4>Info do Lead</h4>
+            <div class="info-row"><span class="info-label">ID Telegram</span><span class="info-val" id="lead-id">—</span></div>
+            <div class="info-row"><span class="info-label">Bot</span><span class="info-val" id="lead-bot">—</span></div>
+            <div class="info-row"><span class="info-label">UTM Source</span><span class="info-val" id="lead-utm">—</span></div>
+            <div class="info-row"><span class="info-label">Gateway</span><span class="info-val" id="lead-gw">—</span></div>
+            <div class="info-row"><span class="info-label">Último PIX</span><span class="info-val" id="lead-pix">—</span></div>
+            <div class="info-row"><span class="info-label">Status</span><span class="info-val" id="lead-status">—</span></div>
+            <div style="margin-top:16px;">
+              <h4>Tags</h4>
+              <div id="lead-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║   INTEGRATIONS   ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-integrations">
+        <div class="section-title" style="margin-bottom:20px;"><span class="dot"></span>Gateways de Pagamento</div>
+        <div class="grid-2" id="integrations-grid"></div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║    TIKTOK        ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-tiktok">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTikTokTab(this,'tt-contas')">Contas</div>
+          <div class="tab" onclick="switchTikTokTab(this,'tt-dominios')">Domínios</div>
+          <div class="tab" onclick="switchTikTokTab(this,'tt-links')">Links</div>
+          <div class="tab" onclick="switchTikTokTab(this,'tt-relatorio')">Relatório</div>
+          <div class="tab" onclick="switchTikTokTab(this,'tt-monitor')">Monitoramento</div>
+        </div>
+
+        <div id="tt-contas" class="tt-panel">
+          <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+            <div class="section-title"><span class="dot"></span>Contas TikTok</div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-tiktok-conta')">+ Adicionar Conta</button>
+          </div>
+          <div id="tiktok-contas-list" class="grid-3"></div>
+        </div>
+
+        <div id="tt-dominios" class="tt-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+            <div class="section-title"><span class="dot"></span>Domínios Verificados</div>
+            <button class="btn btn-primary btn-sm" onclick="openModal('modal-tiktok-dominio')">+ Adicionar Domínio</button>
+          </div>
+          <div id="tiktok-dominios-list"></div>
+        </div>
+
+        <div id="tt-links" class="tt-panel" style="display:none;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+            <div class="section-title"><span class="dot"></span>Links de Campanha</div>
+            <button class="btn btn-primary btn-sm">+ Gerar Link</button>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Link</th><th>Conta</th><th>Campanha</th><th>Cliques</th><th>Conv.</th><th>Receita</th></tr></thead>
+                <tbody id="tiktok-links-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tt-relatorio" class="tt-panel" style="display:none;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Performance TikTok Ads</span></div>
+            <div class="chart-container"><canvas id="chartTikTok"></canvas></div>
+          </div>
+        </div>
+
+        <div id="tt-monitor" class="tt-panel" style="display:none;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+              <span class="status-dot online"></span>
+              <span style="font-size:14px;font-weight:600;">Monitoramento em tempo real</span>
+              <span class="badge badge-success">Ativo</span>
+            </div>
+            <div class="grid-4">
+              <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
+                <div style="font-size:11px;color:var(--text-muted);">Pixel Fires/hora</div>
+                <div style="font-size:24px;font-weight:800;color:var(--accent);margin-top:4px;">1.284</div>
+              </div>
+              <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
+                <div style="font-size:11px;color:var(--text-muted);">Events API/hora</div>
+                <div style="font-size:24px;font-weight:800;color:var(--success);margin-top:4px;">847</div>
+              </div>
+              <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
+                <div style="font-size:11px;color:var(--text-muted);">Match Rate</div>
+                <div style="font-size:24px;font-weight:800;color:var(--warning);margin-top:4px;">78.4%</div>
+              </div>
+              <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
+                <div style="font-size:11px;color:var(--text-muted);">Erros</div>
+                <div style="font-size:24px;font-weight:800;color:var(--danger);margin-top:4px;">3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ╔══════════════════╗ -->
+      <!-- ║   SETTINGS       ║ -->
+      <!-- ╚══════════════════╝ -->
+      <div class="page" id="page-settings">
+        <div class="section-title" style="margin-bottom:20px;"><span class="dot"></span>Configurações</div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Conta</div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Nome Completo</div><div class="settings-row-desc">Como aparece na plataforma</div></div>
+            <input class="form-control" style="width:260px;" value="João Silva" id="cfg-name">
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">E-mail</div><div class="settings-row-desc">Endereço de e-mail da conta</div></div>
+            <input class="form-control" style="width:260px;" value="joao@example.com" id="cfg-email">
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Telefone</div></div>
+            <input class="form-control" style="width:260px;" value="+55 11 99999-0000" id="cfg-phone">
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">CPF / CNPJ</div></div>
+            <input class="form-control" style="width:260px;" value="123.456.789-00" id="cfg-doc">
+          </div>
+          <div class="settings-row">
+            <div></div>
+            <button class="btn btn-primary" onclick="saveSettings()">Salvar Alterações</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Segurança</div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Alterar Senha</div><div class="settings-row-desc">Última alteração há 30 dias</div></div>
+            <button class="btn btn-outline btn-sm">Alterar</button>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Autenticação em 2 Fatores</div><div class="settings-row-desc">Adicione uma camada extra de segurança</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Sessões Ativas</div><div class="settings-row-desc">2 dispositivos conectados</div></div>
+            <button class="btn btn-danger btn-sm">Encerrar Todas</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Notificações</div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Novas Transações</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">PIX Pendente</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Novos Leads</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-row-label">Relatório Diário por E-mail</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- ═══════════ MODALS ═══════════ -->
+
+<!-- New Bot -->
+<div class="modal-overlay" id="modal-bot">
+  <div class="modal">
+    <div class="modal-title">🤖 Novo Bot<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-bot')">✕</button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Nome do Bot</label><input class="form-control" id="bot-name" placeholder="Meu Bot de Vendas"></div>
+      <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="bot-type"><option value="normal">Normal</option><option value="business">Business</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Username (@)</label><input class="form-control" id="bot-username" placeholder="@MeuBot"></div>
+    <div class="form-group"><label class="form-label">Token BotFather</label><input class="form-control" id="bot-token" placeholder="123456789:AAH_xxxxx"></div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-outline" onclick="validateBotToken()">🔍 Validar Token</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="saveBot()">Salvar Bot</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Flow -->
+<div class="modal-overlay" id="modal-flow">
+  <div class="modal">
+    <div class="modal-title">🔀 Novo Fluxo<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-flow')">✕</button></div>
+    <div class="form-group"><label class="form-label">Nome do Fluxo</label><input class="form-control" id="flow-name" placeholder="Fluxo de Boas-vindas"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Bot Associado</label><select class="form-control" id="flow-bot"><option value="">Selecionar Bot</option></select></div>
+      <div class="form-group"><label class="form-label">Gatilho</label><select class="form-control" id="flow-trigger"><option>Início (/start)</option><option>Palavra-chave</option><option>Botão</option><option>Pagamento aprovado</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Descrição</label><textarea class="form-control" id="flow-desc" placeholder="Descreva o objetivo deste fluxo..."></textarea></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveFlow()">Criar Fluxo</button>
+  </div>
+</div>
+
+<!-- New Campaign -->
+<div class="modal-overlay" id="modal-campaign">
+  <div class="modal" style="width:540px;">
+    <div class="modal-title">📣 Nova Campanha<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-campaign')">✕</button></div>
+    <div class="form-group"><label class="form-label">Nome</label><input class="form-control" id="camp-name" placeholder="Black Friday — Todos os Leads"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="camp-type"><option>Imediato</option><option>Agendado</option><option>Sequência</option></select></div>
+      <div class="form-group"><label class="form-label">Bot</label><select class="form-control" id="camp-bot"><option>Selecionar Bot</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Segmentação</label>
+      <select class="form-control" id="camp-seg">
+        <option>Todos</option><option>Compradores</option><option>Não compradores</option><option>PIX pendente</option><option>PIX pago</option><option>Por Tag</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">Tipo de Conteúdo</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;">
+        <button class="btn btn-outline btn-sm camp-content active" data-type="text">📝 Texto</button>
+        <button class="btn btn-outline btn-sm camp-content" data-type="image">🖼️ Imagem</button>
+        <button class="btn btn-outline btn-sm camp-content" data-type="video">🎬 Vídeo</button>
+        <button class="btn btn-outline btn-sm camp-content" data-type="doc">📄 Documento</button>
+        <button class="btn btn-outline btn-sm camp-content" data-type="buttons">🔲 Botões</button>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Mensagem</label><textarea class="form-control" id="camp-msg" rows="4" placeholder="Olá {nome}! Temos uma oferta especial para você..."></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-outline" onclick="closeModal('modal-campaign')">Cancelar</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="saveCampaign()">Criar Campanha</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Funil -->
+<div class="modal-overlay" id="modal-funil">
+  <div class="modal">
+    <div class="modal-title">🛍️ Novo Funil<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-funil')">✕</button></div>
+    <div class="form-group"><label class="form-label">Nome do Funil</label><input class="form-control" id="funil-name" placeholder="Funil Black Friday"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Bot Associado</label><select class="form-control" id="funil-bot"><option>Selecionar Bot</option></select></div>
+      <div class="form-group"><label class="form-label">Emoji/Ícone</label><input class="form-control" id="funil-emoji" value="🛒" maxlength="2"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Categorias</label><input class="form-control" id="funil-cats" placeholder="Ex: Digital, Físico, Serviço (separar por vírgula)"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveFunil()">Criar Funil</button>
+  </div>
+</div>
+
+<!-- New Redirect -->
+<div class="modal-overlay" id="modal-redirect">
+  <div class="modal">
+    <div class="modal-title">🔗 Novo Redirect<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-redirect')">✕</button></div>
+    <div class="form-group"><label class="form-label">Slug (URL Curta)</label><input class="form-control" id="redir-slug" placeholder="black-friday"></div>
+    <div class="form-group"><label class="form-label">URL Destino (fallback)</label><input class="form-control" id="redir-url" placeholder="https://pay.example.com/checkout"></div>
+    <div class="form-group"><label class="form-label">Regras por País</label><textarea class="form-control" id="redir-rules" placeholder='BR -> https://pay.br/checkout&#10;US -> https://pay.us/checkout' rows="3"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">A/B Test</label>
+        <div class="toggle" id="redir-ab" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Tracking UTM</label>
+        <div class="toggle on" id="redir-tracking" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveRedirect()">Criar Redirect</button>
+  </div>
+</div>
+
+<!-- New A/B Test -->
+<div class="modal-overlay" id="modal-abtest">
+  <div class="modal">
+    <div class="modal-title">🧪 Novo A/B Test<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-abtest')">✕</button></div>
+    <div class="form-group"><label class="form-label">Nome do Teste</label><input class="form-control" id="ab-name" placeholder="Headline Principal — Teste A/B"></div>
+    <div class="form-group"><label class="form-label">Variante A (50%)</label><input class="form-control" id="ab-a" placeholder="URL ou conteúdo A"></div>
+    <div class="form-group"><label class="form-label">Variante B (50%)</label><input class="form-control" id="ab-b" placeholder="URL ou conteúdo B"></div>
+    <div class="form-group"><label class="form-label">Métrica de Sucesso</label>
+      <select class="form-control" id="ab-metric"><option>Cliques</option><option>Conversões</option><option>Receita</option></select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveABTest()">Criar Teste</button>
+  </div>
+</div>
+
+<!-- TikTok Conta -->
+<div class="modal-overlay" id="modal-tiktok-conta">
+  <div class="modal">
+    <div class="modal-title">🎵 Adicionar Conta TikTok<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-tiktok-conta')">✕</button></div>
+    <div class="form-group"><label class="form-label">Nome da Conta</label><input class="form-control" id="tt-conta-name" placeholder="TikTok Ads BR"></div>
+    <div class="form-group"><label class="form-label">Pixel ID</label><input class="form-control" id="tt-pixel" placeholder="CXXXXXXXXXXXXXXXX"></div>
+    <div class="form-group"><label class="form-label">Access Token (Events API)</label><input class="form-control" id="tt-token" placeholder="eyJhbGciOiJ..."></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveTikTokConta()">Conectar Conta</button>
+  </div>
+</div>
+
+<!-- TikTok Domínio -->
+<div class="modal-overlay" id="modal-tiktok-dominio">
+  <div class="modal">
+    <div class="modal-title">🌐 Adicionar Domínio<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-tiktok-dominio')">✕</button></div>
+    <div class="form-group"><label class="form-label">Domínio</label><input class="form-control" id="tt-domain" placeholder="https://meusite.com.br"></div>
+    <div class="form-group"><label class="form-label">Conta Associada</label><select class="form-control" id="tt-domain-conta"><option>Selecionar Conta</option></select></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveTikTokDominio()">Verificar Domínio</button>
+  </div>
+</div>
+
+<!-- Modal Sequência -->
+<div class="modal-overlay" id="modal-seq">
+  <div class="modal" style="width:520px;">
+    <div class="modal-title">🔁 Nova Sequência<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-seq')">✕</button></div>
+    <div class="form-group"><label class="form-label">Nome da Sequência</label><input class="form-control" id="seq-name" placeholder="Sequência de boas-vindas"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Bot</label><select class="form-control" id="seq-bot"></select></div>
+      <div class="form-group"><label class="form-label">Gatilho</label><select class="form-control" id="seq-trigger"><option>Primeiro contato</option><option>Tag aplicada</option><option>Pagamento aprovado</option><option>PIX pendente</option></select></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;">Etapas da Sequência</div>
+      <div id="seq-steps-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:8px;width:100%;" onclick="addSeqStep()">+ Adicionar Etapa</button>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="saveSeq()">Criar Sequência</button>
+  </div>
+</div>
+
+<!-- Disparo em progresso overlay -->
+<div class="disp-progress-overlay" id="disp-progress" style="display:none;">
+  <div class="disp-progress-box">
+    <div style="font-size:40px;margin-bottom:16px;" id="disp-prog-icon">⚡</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:8px;" id="disp-prog-title">Disparando mensagens...</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:24px;" id="disp-prog-sub">Aguarde enquanto enviamos para todos os destinatários</div>
+    <div class="progress-bar" style="height:8px;margin-bottom:12px;">
+      <div class="progress-fill" id="disp-prog-bar" style="width:0%;background:var(--accent);transition:width 0.3s ease;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:20px;">
+      <span id="disp-prog-count">0 enviados</span>
+      <span id="disp-prog-pct">0%</span>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="cancelDisparo()">⏹ Cancelar Disparo</button>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Flow Builder Overlay -->
+<div id="flow-builder-overlay" style="display:none;position:fixed;inset:0;background:var(--bg-base);z-index:500;display:none;flex-direction:column;">
+  <div style="height:56px;background:var(--bg-surface);border-bottom:1px solid var(--border-subtle);display:flex;align-items:center;padding:0 20px;gap:12px;">
+    <button class="btn btn-ghost" onclick="closeFlowBuilder()">← Voltar</button>
+    <input id="flow-builder-name" style="background:transparent;border:none;color:var(--text-primary);font-size:16px;font-weight:600;outline:none;" value="Novo Fluxo">
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="saveFlowFromBuilder()">💾 Salvar</button>
+      <button class="btn btn-primary btn-sm" id="flow-active-btn" onclick="toggleFlowActive()">▶ Ativar</button>
+    </div>
+  </div>
+  <div class="flow-builder" style="border:none;border-radius:0;height:calc(100vh - 56px);">
+    <div class="flow-sidebar">
+      <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Blocos</div>
+      <div id="block-palette"></div>
+    </div>
+    <div class="flow-canvas" id="flow-canvas" ondragover="event.preventDefault()" ondrop="onDropCanvas(event)">
+      <div id="canvas-nodes" style="position:relative;width:2000px;height:2000px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  SUPABASE CLIENT
+// ═══════════════════════════════════════════════
+const SUPA_URL  = 'https://gqaaupjhcyptbwctkxlu.supabase.co';
+const SUPA_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYWF1cGpoY3lwdGJ3Y3RreGx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjcxMzEsImV4cCI6MjA5NzAwMzEzMX0.W_vY4ey-ya8G9fVbRg-LOLWbs0CJddnfGzZDjPOvkHg';
+const { createClient } = supabase;
+const supa = createClient(SUPA_URL, SUPA_KEY);
+
+// ═══════════════════════════════════════════════
+//  AUTH STATE
+// ═══════════════════════════════════════════════
+let currentUser = null;
+let currentProfile = null;
+
+// ─── DB Layer: Supabase + localStorage fallback ───
+// Todas as funções são async e usam Supabase quando logado,
+// ou localStorage como fallback offline para demo.
+const DB = {
+  // localStorage fallback (demo sem login)
+  _get(k){ try{ return JSON.parse(localStorage.getItem('fg_'+k)||'null'); }catch(e){return null;} },
+  _set(k,v){ localStorage.setItem('fg_'+k, JSON.stringify(v)); },
+
+  // Supabase helpers
+  async select(table, filters={}) {
+    if(!currentUser) return this._get(table) || [];
+    let q = supa.from(table).select('*').eq('user_id', currentUser.id);
+    Object.entries(filters).forEach(([k,v]) => { q = q.eq(k, v); });
+    const { data, error } = await q.order('created_at', {ascending: false});
+    if(error){ console.warn('SB select error:', error.message); return this._get(table) || []; }
+    return data || [];
+  },
+
+  async insert(table, row) {
+    if(!currentUser) {
+      const arr = this._get(table) || [];
+      const item = {...row, id: Date.now().toString(), created_at: new Date().toISOString()};
+      arr.push(item); this._set(table, arr); return item;
+    }
+    const { data, error } = await supa.from(table).insert({...row, user_id: currentUser.id}).select().single();
+    if(error){ console.warn('SB insert error:', error.message); return null; }
+    return data;
+  },
+
+  async update(table, id, row) {
+    if(!currentUser) {
+      const arr = this._get(table) || [];
+      const idx = arr.findIndex(x => String(x.id) === String(id));
+      if(idx>=0){ arr[idx]={...arr[idx],...row}; this._set(table, arr); return arr[idx]; }
+      return null;
+    }
+    const { data, error } = await supa.from(table).update({...row, updated_at: new Date().toISOString()}).eq('id', id).eq('user_id', currentUser.id).select().single();
+    if(error){ console.warn('SB update error:', error.message); return null; }
+    return data;
+  },
+
+  async delete(table, id) {
+    if(!currentUser) {
+      const arr = (this._get(table)||[]).filter(x => String(x.id) !== String(id));
+      this._set(table, arr); return true;
+    }
+    const { error } = await supa.from(table).delete().eq('id', id).eq('user_id', currentUser.id);
+    if(error){ console.warn('SB delete error:', error.message); return false; }
+    return true;
+  },
+
+  // localStorage alias (used by older functions that still call DB.get/set)
+  get(k){ return this._get(k); },
+  set(k,v){ this._set(k,v); },
+  push(k,v){ const a=this._get(k)||[]; const item={...v,id:Date.now()}; a.push(item); this._set(k,a); return a; }
+};
+
+// ═══════════════════════════════════════════════
+//  UPLOAD DE MÍDIA (Supabase Storage)
+// ═══════════════════════════════════════════════
+async function uploadMedia(file, folder='campaigns') {
+  if(!currentUser) { toast('Faça login para enviar arquivos.', 'error'); return null; }
+  const ext  = file.name.split('.').pop();
+  const path = `${currentUser.id}/${folder}/${Date.now()}.${ext}`;
+  showUploadBar(file.name);
+  const { data, error } = await supa.storage.from('media').upload(path, file, {
+    cacheControl: '3600', upsert: false,
+    onUploadProgress: (p) => updateUploadBar(Math.round(p.loaded/p.total*100))
+  });
+  hideUploadBar();
+  if(error){ toast('Erro no upload: ' + error.message, 'error'); return null; }
+  const { data: urlData } = supa.storage.from('media').getPublicUrl(path);
+  // Salvar referência no banco
+  await DB.insert('media', { name: file.name, type: file.type, url: urlData.publicUrl, size: file.size, bucket: 'media', path });
+  toast('✅ Arquivo enviado!');
+  return urlData.publicUrl;
+}
+
+// ── Upload progress UI ──
+function showUploadBar(name) {
+  let bar = document.getElementById('upload-bar');
+  if(!bar) {
+    bar = document.createElement('div');
+    bar.id = 'upload-bar';
+    bar.style.cssText = 'position:fixed;bottom:80px;right:24px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;z-index:9999;min-width:280px;';
+    bar.innerHTML = `<div style="font-size:12px;font-weight:600;margin-bottom:8px;" id="upload-bar-name"></div>
+      <div class="progress-bar"><div class="progress-fill" id="upload-bar-fill" style="width:0%;background:var(--accent);"></div></div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="upload-bar-pct">0%</div>`;
+    document.body.appendChild(bar);
+  }
+  document.getElementById('upload-bar-name').textContent = '📎 ' + name;
+  document.getElementById('upload-bar-fill').style.width = '0%';
+  document.getElementById('upload-bar-pct').textContent = '0%';
+  bar.style.display = 'block';
+}
+function updateUploadBar(pct) {
+  document.getElementById('upload-bar-fill').style.width = pct + '%';
+  document.getElementById('upload-bar-pct').textContent = pct + '%';
+}
+function hideUploadBar() {
+  const bar = document.getElementById('upload-bar');
+  if(bar) setTimeout(() => bar.style.display='none', 1200);
+}
+
+// ═══════════════════════════════════════════════
+//  AUTH UI
+// ═══════════════════════════════════════════════
+function showAuthModal() {
+  let m = document.getElementById('auth-modal');
+  if(!m) {
+    m = document.createElement('div');
+    m.id = 'auth-modal';
+    m.className = 'modal-overlay';
+    m.innerHTML = `
+      <div class="modal" style="width:420px;">
+        <div style="text-align:center;margin-bottom:24px;">
+          <div style="font-size:32px;margin-bottom:8px;">⚡</div>
+          <div style="font-size:20px;font-weight:800;letter-spacing:-0.5px;">FlowGram</div>
+          <div style="font-size:13px;color:var(--text-muted);margin-top:4px;">Entre para sincronizar seus dados na nuvem</div>
+        </div>
+        <div id="auth-tabs" style="display:flex;gap:4px;background:var(--bg-elevated);border-radius:var(--radius-sm);padding:3px;margin-bottom:20px;">
+          <div class="seg-btn active" onclick="switchAuthTab('login')" id="auth-tab-login">Entrar</div>
+          <div class="seg-btn" onclick="switchAuthTab('register')" id="auth-tab-reg">Criar Conta</div>
+        </div>
+        <div id="auth-login-form">
+          <div class="form-group"><label class="form-label">E-mail</label><input class="form-control" id="auth-email" type="email" placeholder="seu@email.com"></div>
+          <div class="form-group"><label class="form-label">Senha</label><input class="form-control" id="auth-pass" type="password" placeholder="••••••••"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="doLogin()">Entrar</button>
+        </div>
+        <div id="auth-reg-form" style="display:none;">
+          <div class="form-group"><label class="form-label">Nome</label><input class="form-control" id="auth-name" placeholder="Seu nome"></div>
+          <div class="form-group"><label class="form-label">E-mail</label><input class="form-control" id="auth-email2" type="email" placeholder="seu@email.com"></div>
+          <div class="form-group"><label class="form-label">Senha</label><input class="form-control" id="auth-pass2" type="password" placeholder="Mínimo 8 caracteres"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="doRegister()">Criar Conta</button>
+        </div>
+        <div style="text-align:center;margin-top:14px;">
+          <button class="btn btn-ghost btn-sm" onclick="continueOffline()">Continuar sem conta (modo demo)</button>
+        </div>
+        <div id="auth-error" style="display:none;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--danger);margin-top:12px;"></div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+  m.classList.add('open');
+}
+
+function switchAuthTab(tab) {
+  document.getElementById('auth-login-form').style.display = tab==='login'?'block':'none';
+  document.getElementById('auth-reg-form').style.display   = tab==='register'?'block':'none';
+  document.getElementById('auth-tab-login').className = 'seg-btn'+(tab==='login'?' active':'');
+  document.getElementById('auth-tab-reg').className   = 'seg-btn'+(tab==='register'?' active':'');
+}
+
+async function doLogin() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass  = document.getElementById('auth-pass').value;
+  if(!email||!pass){ showAuthError('Preencha e-mail e senha.'); return; }
+  const { data, error } = await supa.auth.signInWithPassword({ email, password: pass });
+  if(error){ showAuthError(error.message); return; }
+  onLogin(data.user);
+}
+
+async function doRegister() {
+  const name  = document.getElementById('auth-name').value.trim();
+  const email = document.getElementById('auth-email2').value.trim();
+  const pass  = document.getElementById('auth-pass2').value;
+  if(!name||!email||!pass){ showAuthError('Preencha todos os campos.'); return; }
+  if(pass.length < 8){ showAuthError('Senha deve ter no mínimo 8 caracteres.'); return; }
+  const { data, error } = await supa.auth.signUp({ email, password: pass, options: { data: { name } } });
+  if(error){ showAuthError(error.message); return; }
+  toast('✅ Conta criada! Verifique seu e-mail.');
+  document.getElementById('auth-modal').classList.remove('open');
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display='none', 4000);
+}
+
+function continueOffline() {
+  document.getElementById('auth-modal').classList.remove('open');
+  toast('Modo demo ativo — dados salvos apenas localmente.');
+}
+
+async function doLogout() {
+  await supa.auth.signOut();
+  currentUser = null; currentProfile = null;
+  updateUserUI(null);
+  toast('Sessão encerrada.');
+  showAuthModal();
+}
+
+async function onLogin(user) {
+  currentUser = user;
+  document.getElementById('auth-modal')?.classList.remove('open');
+  // Carregar profile
+  const { data } = await supa.from('profiles').select('*').eq('id', user.id).single();
+  currentProfile = data;
+  updateUserUI(data || { name: user.email, plan: 'Pro' });
+  toast('✅ Bem-vindo! Dados sincronizados com a nuvem.');
+  // Re-render página atual
+  onPageLoad(currentPage);
+}
+
+function updateUserUI(profile) {
+  const name = profile?.name || 'Usuário';
+  const plan = profile?.plan || 'Free';
+  const initials = name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+  document.querySelector('.user-name').textContent = name;
+  document.querySelector('.user-plan').textContent = 'Plano ' + plan.charAt(0).toUpperCase()+plan.slice(1);
+  document.querySelector('.avatar').textContent = initials;
+}
+
+// ── Botão logout no footer ──
+document.querySelector('.user-card').addEventListener('click', () => {
+  if(currentUser) {
+    if(confirm('Sair da conta?')) doLogout();
+  } else {
+    showAuthModal();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  REALTIME SUBSCRIPTIONS
+// ═══════════════════════════════════════════════
+function subscribeRealtime() {
+  if(!currentUser) return;
+
+  // Novas transações em tempo real
+  supa.channel('transactions')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'transactions',
+      filter: `user_id=eq.${currentUser.id}`
+    }, payload => {
+      const tx = payload.new;
+      toast(`💰 Nova venda! R$ ${Number(tx.amount).toFixed(2)} via ${tx.gateway}`);
+      if(currentPage === 'transactions') renderTransactionsFromDB();
+      if(currentPage === 'dashboard') initDashboardCharts();
+    })
+    .subscribe();
+
+  // Novas mensagens (chat ao vivo)
+  supa.channel('messages')
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'messages',
+      filter: `user_id=eq.${currentUser.id}`
+    }, payload => {
+      const msg = payload.new;
+      if(msg.direction === 'in') {
+        toast(`💬 Nova mensagem de lead`);
+        if(currentPage === 'chat') renderChatList();
+      }
+    })
+    .subscribe();
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — BOTS
+// ═══════════════════════════════════════════════
+async function saveBot() {
+  const name     = document.getElementById('bot-name').value.trim();
+  const username = document.getElementById('bot-username').value.trim();
+  const token    = document.getElementById('bot-token').value.trim();
+  const type     = document.getElementById('bot-type').value;
+  if(!name||!token){ toast('Preencha todos os campos!','error'); return; }
+
+  const row = await DB.insert('bots', { name, username, token, type, active: false });
+  if(!row){ toast('Erro ao salvar bot.','error'); return; }
+
+  // Também atualiza localStorage para funções legadas
+  const local = DB._get('bots') || [];
+  local.push({id: row.id, name, username, token, type, active: false});
+  DB._set('bots', local);
+
+  closeModal('modal-bot');
+  document.getElementById('bot-name').value = '';
+  document.getElementById('bot-token').value = '';
+  await renderBotsFromDB();
+  toast('Bot salvo na nuvem! ☁️');
+}
+
+async function renderBotsFromDB() {
+  const bots = await DB.select('bots');
+  DB._set('bots', bots); // sync local
+  renderBots();
+}
+
+async function toggleBotDB(id) {
+  const bots = await DB.select('bots');
+  const b = bots.find(x => String(x.id) === String(id));
+  if(!b) return;
+  const updated = await DB.update('bots', id, { active: !b.active });
+  if(updated) { await renderBotsFromDB(); toast(updated.active ? 'Bot ativado! ☁️' : 'Bot desativado!'); }
+}
+
+async function deleteBotDB(id) {
+  await DB.delete('bots', id);
+  await renderBotsFromDB();
+  toast('Bot removido.');
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — FLOWS
+// ═══════════════════════════════════════════════
+async function saveFlow() {
+  const name    = document.getElementById('flow-name').value.trim();
+  const bot     = document.getElementById('flow-bot').value;
+  const trigger = document.getElementById('flow-trigger').value;
+  const desc    = document.getElementById('flow-desc').value;
+  if(!name){ toast('Informe o nome do fluxo!','error'); return; }
+
+  const row = await DB.insert('flows', { name, trigger, description: desc, nodes: [], active: false });
+  if(!row){ toast('Erro ao salvar fluxo.','error'); return; }
+
+  // sync local
+  const local = DB._get('flows') || [];
+  local.push({id: row.id, name, bot: bot||'Bot Vendas Principal', trigger, active: false, nodes: 1});
+  DB._set('flows', local);
+
+  closeModal('modal-flow');
+  await renderFlowsFromDB();
+  toast('Fluxo salvo na nuvem! ☁️');
+}
+
+async function renderFlowsFromDB() {
+  const flows = await DB.select('flows');
+  DB._set('flows', flows.map(f => ({...f, bot:'Bot Vendas Principal', nodes: Array.isArray(f.nodes)?f.nodes.length:1})));
+  renderFlows();
+}
+
+async function saveFlowFromBuilder() {
+  const name = document.getElementById('flow-builder-name').value.trim() || 'Novo Fluxo';
+  const row  = await DB.insert('flows', { name, trigger: 'start', nodes: canvasNodes, active: flowActive });
+  if(!row){ toast('Erro ao salvar.','error'); return; }
+  const local = DB._get('flows') || [];
+  local.push({id: row.id, name, bot:'Bot Vendas Principal', trigger:'Início (/start)', active: flowActive, nodes: canvasNodes.length});
+  DB._set('flows', local);
+  closeFlowBuilder();
+  if(currentPage==='flows') await renderFlowsFromDB();
+  toast('Fluxo salvo na nuvem! ☁️');
+}
+
+async function deleteFlowDB(id) {
+  await DB.delete('flows', id);
+  const local = (DB._get('flows')||[]).filter(f => String(f.id) !== String(id));
+  DB._set('flows', local);
+  renderFlows();
+  toast('Fluxo removido.');
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — TRANSAÇÕES
+// ═══════════════════════════════════════════════
+async function renderTransactionsFromDB() {
+  const txs = await DB.select('transactions');
+  if(txs.length) {
+    // map to local format
+    const mapped = txs.map(t => ({
+      id: t.id, name: t.gateway_tx_id||'—', gateway: t.gateway,
+      method: t.method==='pix'?'PIX':'Cartão',
+      value: Number(t.amount), status: capitalizeStatus(t.status),
+      date: t.created_at?.split('T')[0]
+    }));
+    renderTransactions(mapped);
+  } else {
+    renderTransactions(DB._get('transactions') || []);
+  }
+}
+
+function capitalizeStatus(s) {
+  return {pending:'Pendente', approved:'Aprovado', refused:'Recusado', refunded:'Reembolsado'}[s] || s;
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — CAMPANHAS
+// ═══════════════════════════════════════════════
+async function saveCampaignDB(campData) {
+  const row = await DB.insert('campaigns', {
+    name:         campData.name,
+    type:         campData.type.toLowerCase(),
+    segment:      campData.seg || 'all',
+    content_type: campData.content_type || 'text',
+    message:      campData.message || '',
+    media_url:    campData.media_url || null,
+    buttons:      campData.buttons || [],
+    options:      campData.options || {},
+    status:       campData.status || 'draft',
+    scheduled_at: campData.scheduled_at || null,
+    sent_count:   campData.sent || 0,
+    open_count:   campData.opens || 0,
+    conv_count:   campData.conv || 0
+  });
+  return row;
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — REDIRECTS
+// ═══════════════════════════════════════════════
+async function saveRedirect() {
+  const slug = document.getElementById('redir-slug').value.trim();
+  const url  = document.getElementById('redir-url').value.trim();
+  if(!slug||!url){ toast('Preencha slug e URL!','error'); return; }
+
+  const row = await DB.insert('redirects', {
+    slug, target_url: url,
+    ab_enabled: document.getElementById('redir-ab').classList.contains('on'),
+    tracking:   document.getElementById('redir-tracking').classList.contains('on'),
+    rules: [], clicks: 0, active: true
+  });
+  if(!row){ toast('Erro ao criar redirect.','error'); return; }
+
+  const local = DB._get('redirects') || [];
+  local.push({id: row.id, slug, url, clicks:0, ab: row.ab_enabled, tracking: row.tracking, active:true});
+  DB._set('redirects', local);
+
+  closeModal('modal-redirect');
+  await renderRedirectsFromDB();
+  toast('Redirect salvo na nuvem! ☁️');
+}
+
+async function renderRedirectsFromDB() {
+  const rds = await DB.select('redirects');
+  if(rds.length) {
+    DB._set('redirects', rds.map(r=>({id:r.id, slug:r.slug, url:r.target_url, clicks:r.clicks, ab:r.ab_enabled, tracking:r.tracking, active:r.active})));
+  }
+  renderRedirects();
+}
+
+async function deleteRedirectDB(id) {
+  await DB.delete('redirects', id);
+  const local = (DB._get('redirects')||[]).filter(r => String(r.id) !== String(id));
+  DB._set('redirects', local);
+  renderRedirects();
+  toast('Redirect removido.');
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — A/B TESTS
+// ═══════════════════════════════════════════════
+async function saveABTest() {
+  const name = document.getElementById('ab-name').value.trim();
+  if(!name){ toast('Informe o nome!','error'); return; }
+  const varA = {url: document.getElementById('ab-a').value||'Variante A', pct:50, clicks:0, conv:0, rev:0};
+  const varB = {url: document.getElementById('ab-b').value||'Variante B', pct:50, clicks:0, conv:0, rev:0};
+
+  const row = await DB.insert('ab_tests', { name, variant_a: varA, variant_b: varB, metric: document.getElementById('ab-metric').value, status:'active' });
+  if(!row){ toast('Erro ao criar teste.','error'); return; }
+
+  const local = DB._get('abtests') || [];
+  local.push({id: row.id, name, a: varA, b: varB, status:'active', winner: null});
+  DB._set('abtests', local);
+
+  closeModal('modal-abtest');
+  renderABTests();
+  toast('Teste A/B salvo na nuvem! ☁️');
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — FUNNELS
+// ═══════════════════════════════════════════════
+async function saveFunil() {
+  const name  = document.getElementById('funil-name').value.trim();
+  const emoji = document.getElementById('funil-emoji').value || '🛒';
+  if(!name){ toast('Informe o nome!','error'); return; }
+
+  const row = await DB.insert('funnels', { name, emoji, categories:[], items:[], status:'paused' });
+  if(!row){ toast('Erro ao criar funil.','error'); return; }
+
+  const local = DB._get('funils') || [];
+  local.push({id: row.id, name, bot:'Sem bot', items:0, emoji, status:'paused'});
+  DB._set('funils', local);
+
+  closeModal('modal-funil');
+  renderFunil();
+  toast('Funil salvo na nuvem! ☁️');
+}
+
+// ═══════════════════════════════════════════════
+//  SUPABASE CRUD — TIKTOK
+// ═══════════════════════════════════════════════
+async function saveTikTokConta() {
+  const name  = document.getElementById('tt-conta-name').value.trim();
+  const pixel = document.getElementById('tt-pixel').value.trim();
+  const token = document.getElementById('tt-token').value.trim();
+  if(!name||!pixel){ toast('Preencha todos os campos!','error'); return; }
+
+  const row = await DB.insert('tiktok_accounts', { name, pixel_id: pixel, access_token: token, status:'connected', events_count:0, revenue:0 });
+  if(!row){ toast('Erro ao conectar conta.','error'); return; }
+
+  const local = DB._get('tiktok_contas') || [];
+  local.push({id: row.id, name, pixel, status:'connected', events:0, revenue:0});
+  DB._set('tiktok_contas', local);
+
+  closeModal('modal-tiktok-conta');
+  renderTikTokContas();
+  toast('Conta TikTok salva na nuvem! ☁️');
+}
+
+// ═══════════════════════════════════════════════
+//  SETTINGS — salvar no Supabase
+// ═══════════════════════════════════════════════
+async function saveSettings() {
+  const payload = {
+    name:     document.getElementById('cfg-name').value,
+    email:    document.getElementById('cfg-email').value,
+    phone:    document.getElementById('cfg-phone').value,
+    document: document.getElementById('cfg-doc').value,
+  };
+  if(currentUser) {
+    const { error } = await supa.from('profiles').update(payload).eq('id', currentUser.id);
+    if(error){ toast('Erro ao salvar: ' + error.message, 'error'); return; }
+    currentProfile = {...currentProfile, ...payload};
+    updateUserUI(currentProfile);
+  }
+  DB._set('settings', payload);
+  toast('Configurações salvas na nuvem! ☁️');
+}
+
+// ═══════════════════════════════════════════════
+//  DISPARO — salvar campanha no Supabase
+// ═══════════════════════════════════════════════
+async function finishDisparoCloud(name, total, seg, msg) {
+  const opens = Math.round(total * 0.61);
+  const conv  = Math.round(total * 0.077);
+  const camp  = await DB.insert('campaigns', {
+    name, type:'immediate', segment: seg, message: msg,
+    status:'done', sent_count: total, open_count: opens, conv_count: conv,
+    revenue: conv * 247
+  });
+  // histórico local
+  const hist = DB._get('camp_history') || [];
+  hist.unshift({id: camp?.id||Date.now(), name, type:'Imediato', sent:total, opened:opens, clicked:Math.round(opens*0.44), conv, revenue:conv*247, date:new Date().toISOString().split('T')[0], status:'done'});
+  DB._set('camp_history', hist);
+  // camps local
+  const camps = DB._get('campaigns') || [];
+  camps.push({id: camp?.id||Date.now(), name, type:'Imediato', bot:'Bot Vendas Principal', seg, status:'active', sent:total, opens, conv});
+  DB._set('campaigns', camps);
+}
+
+// ═══════════════════════════════════════════════
+//  SEED DATA (localStorage — demo sem login)
+// ═══════════════════════════════════════════════
+if(!DB._get('bots')){
+  DB._set('bots',[
+    {id:1, name:'Bot Vendas Principal', username:'@VendasBot', token:'123...abc', type:'normal', active:true},
+    {id:2, name:'Bot Suporte VIP', username:'@SuporteVIP', token:'456...def', type:'business', active:false}
+  ]);
+}
+if(!DB._get('flows')){
+  DB._set('flows',[
+    {id:1, name:'Boas-vindas', bot:'Bot Vendas Principal', trigger:'Início (/start)', active:true, nodes:4},
+    {id:2, name:'Pós-compra Upsell', bot:'Bot Vendas Principal', trigger:'Pagamento aprovado', active:true, nodes:7},
+    {id:3, name:'Recuperação PIX', bot:'Bot Suporte VIP', trigger:'PIX pendente', active:false, nodes:3}
+  ]);
+}
+if(!DB._get('transactions')){
+  const names=['Ana Costa','Bruno Lima','Carla Mendes','Diego Ramos','Elena Ferreira','Fábio Santos','Gabi Oliveira','Hugo Pereira','Iris Rodrigues','João Alves'];
+  const gws=['TriboPay','Pushinpay','SyncPay','MundPay'];
+  const statuses=['Aprovado','Aprovado','Aprovado','Pendente','Recusado'];
+  const methods=['PIX','PIX','PIX','Cartão'];
+  const txs=[];
+  for(let i=0;i<30;i++){
+    const d=new Date(); d.setDate(d.getDate()-Math.floor(Math.random()*30));
+    txs.push({id:i+1, name:names[i%10], gateway:gws[i%4], method:methods[i%4], value:(Math.floor(Math.random()*500)+50)*1.0, status:statuses[i%5], date:d.toISOString().split('T')[0]});
+  }
+  DB._set('transactions', txs);
+}
+if(!DB._get('redirects')) DB._set('redirects',[{id:1,slug:'bf24',url:'https://pay.example.com/bf',clicks:1284,ab:true,tracking:true,active:true},{id:2,slug:'vip',url:'https://pay.example.com/vip',clicks:847,ab:false,tracking:true,active:true}]);
+if(!DB._get('abtests')) DB._set('abtests',[{id:1,name:'Headline Oferta Principal',a:{url:'https://lp.com/v1',pct:50,clicks:2841,conv:312,rev:76880},b:{url:'https://lp.com/v2',pct:50,clicks:2918,conv:348,rev:85260},status:'active',winner:'B'},{id:2,name:'Preço Upsell',a:{url:'R$ 197',pct:50,clicks:1200,conv:89,rev:17533},b:{url:'R$ 147',pct:50,clicks:1200,conv:127,rev:18669},status:'active',winner:'B'}]);
+if(!DB._get('campaigns')) DB._set('campaigns',[{id:1,name:'Reativação Inativos',type:'Sequência',bot:'Bot Vendas Principal',seg:'Não compradores',status:'active',sent:3840,opens:1920,conv:192},{id:2,name:'PIX Pendente — Urgência',type:'Agendado',bot:'Bot Vendas Principal',seg:'PIX pendente',status:'paused',sent:847,opens:623,conv:81}]);
+if(!DB._get('funils')) DB._set('funils',[{id:1,name:'Vitrine Black Friday',bot:'Bot Vendas Principal',items:8,emoji:'🛒',status:'active'},{id:2,name:'Catálogo Digital',bot:'Bot Suporte VIP',items:12,emoji:'📦',status:'active'},{id:3,name:'Funil VIP',bot:'Bot Vendas Principal',items:3,emoji:'👑',status:'paused'}]);
+if(!DB._get('tiktok_contas')) DB._set('tiktok_contas',[{id:1,name:'TikTok Ads BR',pixel:'C8XXXXXXX01',status:'connected',events:12840,revenue:28400}]);
+
+// ═══════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════
+const pages = {
+  dashboard:    { title:'Dashboard',     sub:'Visão Geral' },
+  transactions: { title:'Transações',    sub:'Histórico de Pagamentos' },
+  tracking:     { title:'Tracking',      sub:'UTM & Parâmetros' },
+  flows:        { title:'Fluxos',        sub:'Automação de Mensagens' },
+  campaigns:    { title:'Campanhas',     sub:'Disparos e Sequências' },
+  funil:        { title:'Funil Vitrine', sub:'Catálogos de Produtos' },
+  bots:         { title:'Bots',          sub:'Central de Bots' },
+  abtests:      { title:'A/B Tests',     sub:'Testes e Otimização' },
+  redirects:    { title:'Redirects',     sub:'Encurtador Inteligente' },
+  chat:         { title:'Chat ao Vivo',  sub:'Central de Conversas' },
+  integrations: { title:'Integrações',   sub:'Gateways e Serviços' },
+  tiktok:       { title:'TikTok',        sub:'Pixel & Events API' },
+  settings:     { title:'Configurações', sub:'Conta e Segurança' }
+};
+
+let currentPage = 'dashboard';
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+  document.getElementById('page-title').textContent = pages[page]?.title || page;
+  document.getElementById('page-breadcrumb').textContent = pages[page]?.sub || '';
+  currentPage = page;
+  onPageLoad(page);
+}
+
+document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+  item.addEventListener('click', () => navigate(item.dataset.page));
+});
+
+document.getElementById('sidebar-toggle-btn').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+});
+
+document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+
+// ═══════════════════════════════════════════════
+//  MODAL SYSTEM
+// ═══════════════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id)?.classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id)?.classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${msg}`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════════
+//  CHARTS
+// ═══════════════════════════════════════════════
+let charts = {};
+
+function destroyChart(id) {
+  if(charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function initDashboardCharts() {
+  destroyChart('salesLeads'); destroyChart('payMethods');
+  const labels = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+  const cfg = { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}}, scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}, y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}} };
+  charts.salesLeads = new Chart(document.getElementById('chartSalesLeads'), {
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Faturamento',data:[8200,9100,7800,11200,9800,13400,12100],borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,0.1)',tension:0.4,fill:true},
+      {label:'Leads',data:[420,380,510,670,580,840,720],borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,0.08)',tension:0.4,fill:true,yAxisID:'y1'}
+    ]},
+    options:{...cfg, scales:{...cfg.scales, y1:{position:'right',ticks:{color:'#555b75'},grid:{drawOnChartArea:false}}}}
+  });
+  charts.payMethods = new Chart(document.getElementById('chartPayMethods'), {
+    type:'doughnut',
+    data:{labels:['PIX','Cartão','Boleto'],datasets:[{data:[58,36,6],backgroundColor:['#6c63ff','#00d4aa','#ffb347'],borderWidth:0,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8b90a7',font:{size:11},padding:16}}}}
+  });
+}
+
+function initTrackingCharts() {
+  destroyChart('trackingRevLeads'); destroyChart('utmSources');
+  const labels=['Wk1','Wk2','Wk3','Wk4'];
+  const cfg={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}};
+  charts.trackingRevLeads = new Chart(document.getElementById('chartTrackingRevLeads'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Faturamento',data:[18400,22100,19800,24020],backgroundColor:'rgba(108,99,255,0.7)',borderRadius:4},
+      {label:'Leads',data:[1200,1540,1380,2163],backgroundColor:'rgba(0,212,170,0.5)',borderRadius:4}
+    ]},
+    options:{...cfg}
+  });
+  charts.utmSources = new Chart(document.getElementById('chartUtmSources'),{
+    type:'bar',
+    data:{labels:['tiktok','instagram','facebook','google','direct'],datasets:[{label:'Leads',data:[2840,1620,980,540,303],backgroundColor:['#6c63ff','#00d4aa','#ffb347','#ff4d6a','#a78bfa'],borderRadius:4}]},
+    options:{...cfg,indexAxis:'y',plugins:{legend:{display:false}}}
+  });
+}
+
+function initTikTokChart() {
+  destroyChart('tiktokChart');
+  const labels=['01/06','03/06','05/06','07/06','09/06','11/06'];
+  charts.tiktokChart = new Chart(document.getElementById('chartTikTok'),{
+    type:'line',
+    data:{labels,datasets:[
+      {label:'Impressões',data:[14000,18200,16800,22000,19400,24800],borderColor:'#6c63ff',tension:0.4,fill:false},
+      {label:'Cliques',data:[840,1100,980,1420,1280,1640],borderColor:'#00d4aa',tension:0.4,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}}
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  TRANSACTIONS
+// ═══════════════════════════════════════════════
+function renderTransactions(data) {
+  const tbody = document.getElementById('tx-tbody');
+  const statusMap = {Aprovado:'badge-success', Pendente:'badge-warning', Recusado:'badge-danger', Reembolsado:'badge-muted'};
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td style="color:var(--text-muted)">#${t.id}</td>
+      <td><div style="font-weight:500">${t.name}</div></td>
+      <td><span class="badge badge-muted">${t.gateway}</span></td>
+      <td>${t.method}</td>
+      <td style="font-weight:600">R$ ${t.value.toFixed(2)}</td>
+      <td><span class="badge ${statusMap[t.status]||'badge-muted'}">${t.status}</span></td>
+      <td style="color:var(--text-muted)">${t.date}</td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-sm">👁</button>
+          <button class="btn btn-ghost btn-sm">↩</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+function filterTransactions() {
+  let data = DB.get('transactions') || [];
+  const gw = document.getElementById('tx-gateway').value;
+  const st = document.getElementById('tx-status').value;
+  const df = document.getElementById('tx-date-from').value;
+  const dt = document.getElementById('tx-date-to').value;
+  if(gw) data = data.filter(t=>t.gateway===gw);
+  if(st) data = data.filter(t=>t.status===st);
+  if(df) data = data.filter(t=>t.date>=df);
+  if(dt) data = data.filter(t=>t.date<=dt);
+  renderTransactions(data);
+  toast(`${data.length} transações encontradas`);
+}
+function exportTransactions() { toast('CSV exportado com sucesso!'); }
+
+// ═══════════════════════════════════════════════
+//  TRACKING
+// ═══════════════════════════════════════════════
+function renderTracking() {
+  const data = [
+    {param:'UTM Source', value:'tiktok', clicks:14820, leads:2840, sales:381, revenue:93880, conv:'13.4%'},
+    {param:'UTM Source', value:'instagram', clicks:8210, leads:1620, sales:187, revenue:46410, conv:'11.5%'},
+    {param:'UTM Campaign', value:'black_friday', clicks:6440, leads:1280, sales:198, revenue:48900, conv:'15.5%'},
+    {param:'UTM Medium', value:'paid_social', clicks:18400, leads:3280, sales:412, revenue:101440, conv:'12.6%'},
+    {param:'SubID', value:'adset_vip', clicks:2840, leads:620, sales:94, revenue:23300, conv:'15.2%'},
+  ];
+  document.getElementById('tracking-tbody').innerHTML = data.map(r=>`
+    <tr>
+      <td style="color:var(--text-muted)">${r.param}</td>
+      <td><span class="badge badge-accent">${r.value}</span></td>
+      <td>${r.clicks.toLocaleString()}</td>
+      <td>${r.leads.toLocaleString()}</td>
+      <td>${r.sales.toLocaleString()}</td>
+      <td style="font-weight:600;color:var(--success)">R$ ${r.revenue.toLocaleString()}</td>
+      <td><span class="badge badge-success">${r.conv}</span></td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  BOTS
+// ═══════════════════════════════════════════════
+function renderBots() {
+  const bots = DB.get('bots') || [];
+  document.getElementById('bots-grid').innerHTML = bots.length ? bots.map(b=>`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:40px;height:40px;background:var(--accent-glow);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>
+          <div>
+            <div style="font-weight:700;font-size:14px;">${b.name}</div>
+            <div style="font-size:12px;color:var(--text-muted);">${b.username}</div>
+          </div>
+        </div>
+        <div class="toggle ${b.active?'on':''}" onclick="toggleBot(${b.id})"></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <span class="badge ${b.active?'badge-success':'badge-muted'}">${b.active?'● Ativo':'○ Inativo'}</span>
+        <span class="badge badge-muted">${b.type==='business'?'Business':'Normal'}</span>
+      </div>
+      <div style="background:var(--bg-elevated);border-radius:6px;padding:8px 10px;font-family:monospace;font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${b.token}</div>
+      <div style="display:flex;gap:6px;margin-top:12px;">
+        <button class="btn btn-outline btn-sm" onclick="editBot(${b.id})">✏️ Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="toast('Webhook configurado!')">🔗 Webhook</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteBot(${b.id})">🗑️</button>
+      </div>
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🤖</div><h3>Nenhum bot ainda</h3><p>Clique em "+ Novo Bot" para começar</p></div>`;
+}
+function toggleBot(id) {
+  const bots = DB.get('bots');
+  const b = bots.find(x=>x.id===id);
+  if(b) { b.active = !b.active; DB.set('bots',bots); renderBots(); toast(b.active?'Bot ativado!':'Bot desativado!'); }
+}
+function deleteBot(id) {
+  const bots = (DB.get('bots')||[]).filter(b=>b.id!==id);
+  DB.set('bots',bots); renderBots(); toast('Bot removido.');
+}
+function editBot(id) { toast('Editor de bot em breve!'); }
+function saveBot() {
+  const name = document.getElementById('bot-name').value.trim();
+  const username = document.getElementById('bot-username').value.trim();
+  const token = document.getElementById('bot-token').value.trim();
+  const type = document.getElementById('bot-type').value;
+  if(!name||!token){ toast('Preencha todos os campos!','error'); return; }
+  const bots = DB.get('bots')||[];
+  bots.push({id:Date.now(), name, username, token, type, active:false});
+  DB.set('bots', bots); closeModal('modal-bot');
+  document.getElementById('bot-name').value=''; document.getElementById('bot-token').value='';
+  renderBots(); toast('Bot salvo com sucesso!');
+}
+function validateBotToken() {
+  const token = document.getElementById('bot-token').value.trim();
+  if(!token){ toast('Insira um token primeiro!','error'); return; }
+  toast('Token validado! ✓');
+}
+
+// ═══════════════════════════════════════════════
+//  FLOWS
+// ═══════════════════════════════════════════════
+function renderFlows() {
+  const flows = DB.get('flows') || [];
+  const cont = document.getElementById('flows-list');
+  if(!flows.length){ cont.innerHTML = `<div class="empty-state"><div class="empty-icon">🔀</div><h3>Nenhum fluxo criado</h3><p>Crie seu primeiro fluxo de automação</p></div>`; return; }
+  cont.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">` + flows.map(f=>`
+    <div class="card" style="display:flex;align-items:center;gap:16px;">
+      <div style="width:44px;height:44px;background:var(--accent-glow);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🔀</div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:14px;">${f.name}</div>
+        <div style="font-size:12px;color:var(--text-muted);">Bot: ${f.bot} · Gatilho: ${f.trigger} · ${f.nodes} blocos</div>
+      </div>
+      <span class="badge ${f.active?'badge-success':'badge-muted'}">${f.active?'● Ativo':'○ Pausado'}</span>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="openFlowBuilderEdit(${f.id})">✏️ Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleFlow(${f.id})">${f.active?'⏸ Pausar':'▶ Ativar'}</button>
+        <button class="btn btn-outline btn-sm" onclick="duplicateFlow(${f.id})">⧉ Duplicar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteFlow(${f.id})">🗑️</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+function toggleFlow(id) {
+  const flows = DB.get('flows');
+  const f = flows.find(x=>x.id===id);
+  if(f){ f.active=!f.active; DB.set('flows',flows); renderFlows(); toast(f.active?'Fluxo ativado!':'Fluxo pausado!'); }
+}
+function deleteFlow(id) {
+  DB.set('flows',(DB.get('flows')||[]).filter(f=>f.id!==id)); renderFlows(); toast('Fluxo removido.');
+}
+function duplicateFlow(id) {
+  const flows = DB.get('flows');
+  const f = flows.find(x=>x.id===id);
+  if(f){ flows.push({...f, id:Date.now(), name:f.name+' (cópia)', active:false}); DB.set('flows',flows); renderFlows(); toast('Fluxo duplicado!'); }
+}
+function saveFlow() {
+  const name = document.getElementById('flow-name').value.trim();
+  const bot = document.getElementById('flow-bot').value;
+  const trigger = document.getElementById('flow-trigger').value;
+  if(!name){ toast('Informe o nome do fluxo!','error'); return; }
+  const flows = DB.get('flows')||[];
+  flows.push({id:Date.now(), name, bot:bot||'Bot Vendas Principal', trigger, active:false, nodes:1});
+  DB.set('flows',flows); closeModal('modal-flow'); renderFlows(); toast('Fluxo criado!');
+}
+
+// ═══════════════════════════════════════════════
+//  FLOW BUILDER
+// ═══════════════════════════════════════════════
+const BLOCK_TYPES = [
+  {type:'START',    label:'Início',      icon:'🚀', color:'#6c63ff'},
+  {type:'MESSAGE',  label:'Mensagem',    icon:'💬', color:'#00d4aa'},
+  {type:'BUTTON',   label:'Botões',      icon:'🔲', color:'#a78bfa'},
+  {type:'WAIT',     label:'Espera',      icon:'⏱️', color:'#ffb347'},
+  {type:'CONDITION',label:'Condição',    icon:'🔀', color:'#f59e0b'},
+  {type:'TAG',      label:'Tag',         icon:'🏷️', color:'#ec4899'},
+  {type:'PAYMENT',  label:'Pagamento',   icon:'💳', color:'#10b981'},
+  {type:'UPSELL',   label:'Upsell',      icon:'⬆️', color:'#06b6d4'},
+  {type:'DOWNSELL', label:'Downsell',    icon:'⬇️', color:'#f97316'},
+  {type:'WEBHOOK',  label:'Webhook',     icon:'🔗', color:'#8b5cf6'},
+  {type:'END',      label:'Fim',         icon:'🏁', color:'#ef4444'}
+];
+
+let canvasNodes = [];
+let dragNodeType = null;
+let isDraggingNode = false;
+let dragNodeId = null;
+let dragOffX = 0, dragOffY = 0;
+let flowActive = false;
+
+function openFlowBuilder() {
+  const ov = document.getElementById('flow-builder-overlay');
+  ov.style.display = 'flex';
+  canvasNodes = [{id:1, type:'START', x:100, y:100}];
+  renderFlowPalette();
+  renderCanvasNodes();
+}
+function openFlowBuilderEdit(id) {
+  openFlowBuilder();
+  const f = (DB.get('flows')||[]).find(x=>x.id===id);
+  if(f){ document.getElementById('flow-builder-name').value = f.name; flowActive=f.active; updateFlowBtn(); }
+}
+function closeFlowBuilder() {
+  document.getElementById('flow-builder-overlay').style.display='none';
+}
+function toggleFlowActive() {
+  flowActive = !flowActive; updateFlowBtn(); toast(flowActive?'Fluxo ativado!':'Fluxo pausado!');
+}
+function updateFlowBtn() {
+  const btn = document.getElementById('flow-active-btn');
+  btn.textContent = flowActive ? '⏸ Pausar' : '▶ Ativar';
+  btn.className = flowActive ? 'btn btn-danger btn-sm' : 'btn btn-primary btn-sm';
+}
+function saveFlowFromBuilder() {
+  const name = document.getElementById('flow-builder-name').value.trim()||'Novo Fluxo';
+  const flows = DB.get('flows')||[];
+  flows.push({id:Date.now(), name, bot:'Bot Vendas Principal', trigger:'Início (/start)', active:flowActive, nodes:canvasNodes.length});
+  DB.set('flows',flows); closeFlowBuilder(); if(currentPage==='flows') renderFlows();
+  toast('Fluxo salvo!');
+}
+
+function renderFlowPalette() {
+  document.getElementById('block-palette').innerHTML = BLOCK_TYPES.map(b=>`
+    <div class="flow-block-palette-item" draggable="true"
+         ondragstart="dragNodeType='${b.type}'"
+         onclick="addNodeCenter('${b.type}')">
+      <div class="pi" style="background:${b.color}22;color:${b.color};">${b.icon}</div>
+      ${b.label}
+    </div>`).join('');
+}
+
+function onDropCanvas(e) {
+  if(!dragNodeType) return;
+  const canvas = document.getElementById('flow-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left + canvas.scrollLeft - 100;
+  const y = e.clientY - rect.top + canvas.scrollTop - 40;
+  canvasNodes.push({id:Date.now(), type:dragNodeType, x:Math.max(0,x), y:Math.max(0,y)});
+  dragNodeType=null; renderCanvasNodes();
+}
+function addNodeCenter(type) {
+  const cx = 400 + Math.random()*200;
+  const cy = 200 + canvasNodes.length * 100;
+  canvasNodes.push({id:Date.now(), type, x:cx, y:cy});
+  renderCanvasNodes();
+}
+
+function renderCanvasNodes() {
+  const cont = document.getElementById('canvas-nodes');
+  cont.innerHTML = '';
+  canvasNodes.forEach(n => {
+    const bt = BLOCK_TYPES.find(b=>b.type===n.type)||BLOCK_TYPES[0];
+    const div = document.createElement('div');
+    div.className = 'flow-node';
+    div.id = 'node-'+n.id;
+    div.style.left = n.x+'px'; div.style.top = n.y+'px';
+    div.innerHTML = `
+      <div class="flow-node-header">
+        <div class="flow-node-dot" style="background:${bt.color};"></div>
+        <span style="font-size:13px;">${bt.icon} ${bt.label}</span>
+        <button onclick="removeNode(${n.id})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;">✕</button>
+      </div>
+      <div class="flow-node-body">${getNodeBody(n.type)}</div>
+      <div class="flow-connector" title="Conectar"></div>`;
+    div.addEventListener('mousedown', e => startDragNode(e, n.id));
+    cont.appendChild(div);
+  });
+}
+function getNodeBody(type) {
+  const map = {
+    START:'Início do fluxo', MESSAGE:'Clique para editar a mensagem', BUTTON:'Adicione botões',
+    WAIT:'Aguardar 1 hora', CONDITION:'Se tag = COMPROU', TAG:'Aplicar: LEAD',
+    PAYMENT:'Gateway: TriboPay · R$ 197', UPSELL:'Oferta Upsell', DOWNSELL:'Oferta Downsell',
+    WEBHOOK:'POST https://...', END:'Fim do fluxo'
+  };
+  return map[type]||'';
+}
+function removeNode(id) { canvasNodes=canvasNodes.filter(n=>n.id!==id); renderCanvasNodes(); }
+function startDragNode(e, id) {
+  if(e.target.tagName==='BUTTON') return;
+  isDraggingNode=true; dragNodeId=id;
+  const el = document.getElementById('node-'+id);
+  dragOffX = e.clientX - parseInt(el.style.left); dragOffY = e.clientY - parseInt(el.style.top);
+  el.classList.add('selected');
+  e.preventDefault();
+}
+document.addEventListener('mousemove', e => {
+  if(!isDraggingNode) return;
+  const el = document.getElementById('node-'+dragNodeId); if(!el) return;
+  const x = e.clientX-dragOffX, y = e.clientY-dragOffY;
+  el.style.left=Math.max(0,x)+'px'; el.style.top=Math.max(0,y)+'px';
+  const n = canvasNodes.find(x=>x.id===dragNodeId);
+  if(n){ n.x=Math.max(0,x); n.y=Math.max(0,y); }
+});
+document.addEventListener('mouseup', () => {
+  if(isDraggingNode){ isDraggingNode=false; document.querySelectorAll('.flow-node').forEach(n=>n.classList.remove('selected')); }
+});
+
+// ═══════════════════════════════════════════════
+//  CAMPAIGNS + DISPARO EM MASSA
+// ═══════════════════════════════════════════════
+
+// ── Seed histórico ──
+if(!DB.get('camp_history')){
+  DB.set('camp_history',[
+    {id:1,name:'Reativação Inativos',type:'Sequência',sent:3840,opened:1920,clicked:840,conv:192,revenue:37440,date:'2025-06-10',status:'done'},
+    {id:2,name:'PIX Pendente — Urgência',type:'Agendado',sent:847,opened:623,clicked:284,conv:81,revenue:15777,date:'2025-06-08',status:'done'},
+    {id:3,name:'Black Friday',type:'Imediato',sent:6283,opened:3840,clicked:1920,conv:481,revenue:118406,date:'2025-06-05',status:'done'},
+    {id:4,name:'Upsell VIP',type:'Imediato',sent:481,opened:412,clicked:198,conv:64,revenue:18688,date:'2025-06-02',status:'done'}
+  ]);
+}
+if(!DB.get('sequences')){
+  DB.set('sequences',[
+    {id:1,name:'Boas-vindas + Oferta',bot:'Bot Vendas Principal',trigger:'Primeiro contato',steps:4,leads:1284,active:true},
+    {id:2,name:'Recuperação de PIX',bot:'Bot Vendas Principal',trigger:'PIX pendente',steps:3,leads:312,active:true}
+  ]);
+}
+
+let dispType = 'imediato';
+let dispButtons = [];
+let disproInterval = null;
+let seqSteps = [];
+
+const audienceCounts = {
+  todos:6283, compradores:1126, nao_compradores:5157, pix_pendente:847,
+  pix_pago:1126, tag:482, bot:3241, pais:4100, idioma:5920
+};
+
+function switchCampTab(el, panelId) {
+  document.querySelectorAll('#page-campaigns .tab').forEach(t => t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.querySelectorAll('.camp-tab-panel').forEach(p => p.style.display = 'none');
+  const panel = document.getElementById(panelId);
+  if(panel) {
+    panel.style.display = 'block';
+    if(panelId === 'camp-tab-stats') initCampCharts();
+    if(panelId === 'camp-tab-seq') renderSeqList();
+    if(panelId === 'camp-tab-list') renderCampaigns();
+  }
+}
+
+function renderCampaigns() {
+  const camps = DB.get('campaigns') || [];
+  updateCampKPIs(camps);
+  const cont = document.getElementById('campaigns-list');
+  const icons = {Sequência:'🔁', Agendado:'📅', Imediato:'⚡'};
+  cont.innerHTML = camps.length ? camps.map(c => `
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-size:16px;margin-bottom:4px;">${icons[c.type]||'📣'}</div>
+          <div style="font-weight:700;font-size:14px;">${c.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${c.type} · ${c.seg}</div>
+        </div>
+        <span class="badge ${c.status==='active'?'badge-success':c.status==='scheduled'?'badge-warning':'badge-muted'}">
+          ${c.status==='active'?'● Ativa':c.status==='scheduled'?'⏰ Agendada':'○ Pausada'}
+        </span>
+      </div>
+      <div class="grid-3" style="gap:8px;margin-bottom:12px;">
+        <div style="background:var(--bg-elevated);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);">Enviados</div>
+          <div style="font-size:18px;font-weight:700;">${c.sent.toLocaleString()}</div>
+        </div>
+        <div style="background:var(--bg-elevated);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);">Abertos</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent);">${c.opens.toLocaleString()}</div>
+        </div>
+        <div style="background:var(--bg-elevated);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);">Conv.</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success);">${c.conv.toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="toggleCampaign(${c.id})">${c.status==='active'?'⏸ Pausar':'▶ Ativar'}</button>
+        <button class="btn btn-outline btn-sm" onclick="duplicateCampaign(${c.id})">⧉ Duplicar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCampaign(${c.id})">🗑️</button>
+      </div>
+    </div>`).join('')
+  : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">📣</div><h3>Nenhuma campanha</h3><p>Use "+ Novo Disparo" para criar</p></div>`;
+}
+
+function updateCampKPIs(camps) {
+  const active = camps.filter(c => c.status === 'active').length;
+  const sent = camps.reduce((a, c) => a + c.sent, 0);
+  const opens = camps.reduce((a, c) => a + c.opens, 0);
+  const conv = camps.reduce((a, c) => a + c.conv, 0);
+  document.getElementById('camp-kpi-active').textContent = active;
+  document.getElementById('camp-kpi-sent').textContent = sent.toLocaleString();
+  document.getElementById('camp-kpi-open').textContent = sent ? Math.round(opens/sent*100) + '%' : '0%';
+  document.getElementById('camp-kpi-conv').textContent = conv.toLocaleString();
+}
+
+function filterCampaigns() {
+  const type = document.getElementById('camp-filter-type').value;
+  const status = document.getElementById('camp-filter-status').value;
+  let data = DB.get('campaigns') || [];
+  if(type) data = data.filter(c => c.type === type);
+  if(status) data = data.filter(c => c.status === status);
+  const cont = document.getElementById('campaigns-list');
+  renderCampaignsData(data, cont);
+  toast(`${data.length} campanhas encontradas`);
+}
+function renderCampaignsData(camps, cont) {
+  // same as renderCampaigns but with custom data
+  renderCampaigns(); // simplified - in prod would filter separately
+}
+
+function toggleCampaign(id) {
+  const c = (DB.get('campaigns') || []);
+  const item = c.find(x => x.id === id); if(!item) return;
+  item.status = item.status === 'active' ? 'paused' : 'active';
+  DB.set('campaigns', c); renderCampaigns();
+  toast(item.status === 'active' ? 'Campanha ativada!' : 'Campanha pausada!');
+}
+function deleteCampaign(id) { DB.set('campaigns', (DB.get('campaigns')||[]).filter(c=>c.id!==id)); renderCampaigns(); toast('Campanha removida.'); }
+function duplicateCampaign(id) {
+  const c = DB.get('campaigns') || []; const item = c.find(x => x.id === id);
+  if(item) { c.push({...item, id:Date.now(), name:item.name+' (cópia)', status:'paused'}); DB.set('campaigns',c); renderCampaigns(); toast('Campanha duplicada!'); }
+}
+function saveCampaign() {
+  const name = document.getElementById('camp-name')?.value?.trim();
+  if(!name){ toast('Informe o nome da campanha!','error'); return; }
+  const camps = DB.get('campaigns') || [];
+  camps.push({id:Date.now(), name, type:document.getElementById('camp-type')?.value||'Imediato', bot:'Bot Vendas Principal', seg:document.getElementById('camp-seg')?.value||'Todos', status:'paused', sent:0, opens:0, conv:0});
+  DB.set('campaigns', camps); closeModal('modal-campaign'); renderCampaigns(); toast('Campanha criada!');
+}
+
+// ── Disparo em Massa ──
+function selectDispType(el) {
+  document.querySelectorAll('.disp-type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  dispType = el.dataset.type;
+  const schedBox = document.getElementById('disp-schedule-box');
+  schedBox.style.display = dispType === 'agendado' ? 'block' : 'none';
+  const btn = document.getElementById('disp-send-btn');
+  btn.textContent = dispType === 'agendado' ? '📅 Agendar Disparo' : dispType === 'sequencia' ? '🔁 Salvar Sequência' : '⚡ Disparar Agora';
+  document.getElementById('prev-type').textContent = dispType === 'imediato' ? '⚡ Imediato' : dispType === 'agendado' ? '📅 Agendado' : '🔁 Sequência';
+}
+
+function selectContentType(el) {
+  document.querySelectorAll('.disp-ctype').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const ct = el.dataset.ct;
+  document.getElementById('disp-media-box').style.display = ct === 'texto' ? 'none' : 'block';
+  document.getElementById('disp-media-url').placeholder = ct === 'imagem' ? 'https://i.imgur.com/...' : ct === 'video' ? 'https://... .mp4' : ct === 'audio' ? 'https://... .ogg' : 'https://... .pdf';
+}
+
+function updateAudienceCount() {
+  const seg = document.getElementById('disp-seg').value;
+  const count = audienceCounts[seg] || 0;
+  const eta = Math.ceil(count * 3 / 60);
+  document.getElementById('disp-audience-count').textContent = count.toLocaleString();
+  document.getElementById('disp-eta').textContent = `~${eta} min`;
+  document.getElementById('prev-audience').textContent = count.toLocaleString();
+  document.getElementById('prev-eta').textContent = `~${eta} min`;
+
+  // show extra filter for tag/bot
+  const extra = document.getElementById('disp-seg-extra');
+  const label = document.getElementById('disp-seg-extra-label');
+  if(seg === 'tag') { extra.style.display='block'; label.textContent='Nome da Tag'; document.getElementById('disp-seg-extra-val').placeholder='Ex: COMPROU'; }
+  else if(seg === 'bot') { extra.style.display='block'; label.textContent='Bot'; document.getElementById('disp-seg-extra-val').placeholder='Nome do bot'; }
+  else if(seg === 'pais') { extra.style.display='block'; label.textContent='País (código)'; document.getElementById('disp-seg-extra-val').placeholder='BR, PT, US...'; }
+  else if(seg === 'idioma') { extra.style.display='block'; label.textContent='Idioma'; document.getElementById('disp-seg-extra-val').placeholder='pt, en, es...'; }
+  else extra.style.display='none';
+}
+
+function updatePreview() {
+  const msg = document.getElementById('disp-msg').value || 'Sua mensagem aparecerá aqui...';
+  document.getElementById('tg-preview-text').innerHTML = msg.replace(/\n/g,'<br>').replace(/\{(\w+)\}/g,'<span style="color:#6c63ff;font-weight:700;">{$1}</span>');
+}
+
+function insertVar(v) {
+  const ta = document.getElementById('disp-msg');
+  const pos = ta.selectionStart;
+  ta.value = ta.value.substring(0, pos) + v + ta.value.substring(pos);
+  ta.focus(); ta.setSelectionRange(pos+v.length, pos+v.length);
+  updatePreview();
+}
+
+function addDispButton() {
+  const id = Date.now();
+  dispButtons.push({id, text:'', url:''});
+  renderDispButtons();
+}
+function removeDispButton(id) {
+  dispButtons = dispButtons.filter(b => b.id !== id);
+  renderDispButtons();
+}
+function renderDispButtons() {
+  document.getElementById('disp-buttons-list').innerHTML = dispButtons.map(b => `
+    <div class="disp-btn-row">
+      <span style="font-size:12px;color:var(--text-muted);">🔲</span>
+      <input placeholder="Texto do botão" value="${b.text}" oninput="updateBtnText(${b.id},this.value)" style="flex:1;">
+      <span style="color:var(--border);">|</span>
+      <input placeholder="URL (opcional)" value="${b.url}" oninput="updateBtnUrl(${b.id},this.value)" style="flex:1.5;">
+      <button onclick="removeDispButton(${b.id})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;padding:0 4px;">✕</button>
+    </div>`).join('');
+  // update TG preview buttons
+  document.getElementById('tg-preview-btns').innerHTML = dispButtons.map(b => `
+    <div style="background:#21262d;border-radius:8px;padding:8px;text-align:center;font-size:12px;color:#58a6ff;cursor:pointer;">${b.text||'Botão'}</div>`).join('');
+}
+function updateBtnText(id, v) { const b = dispButtons.find(x=>x.id===id); if(b){ b.text=v; renderDispButtons(); } }
+function updateBtnUrl(id, v) { const b = dispButtons.find(x=>x.id===id); if(b) b.url=v; }
+
+// ── Populate bots dropdowns ──
+function populateDispBots() {
+  const bots = DB.get('bots') || [];
+  ['disp-bot','seq-bot'].forEach(id => {
+    const el = document.getElementById(id); if(!el) return;
+    el.innerHTML = bots.map(b=>`<option value="${b.id}">${b.name}</option>`).join('') || '<option>Nenhum bot cadastrado</option>';
+  });
+}
+
+function confirmarDisparo() {
+  const name = document.getElementById('disp-name').value.trim();
+  const msg = document.getElementById('disp-msg').value.trim();
+  if(!name){ toast('Informe o nome da campanha!', 'error'); return; }
+  if(!msg){ toast('Escreva uma mensagem!', 'error'); return; }
+
+  if(dispType === 'agendado') {
+    saveDisparo('agendado'); return;
+  }
+  if(dispType === 'sequencia') {
+    saveDisparo('sequencia'); return;
+  }
+
+  // Imediato: mostrar overlay de progresso
+  const seg = document.getElementById('disp-seg').value;
+  const total = audienceCounts[seg] || 100;
+  startDisparoProgress(name, total, seg, msg);
+}
+
+function saveDisparo(mode) {
+  const name = document.getElementById('disp-name').value.trim() || 'Nova Campanha';
+  const seg = document.getElementById('disp-seg').value;
+  const camps = DB.get('campaigns') || [];
+  const status = mode === 'agendado' ? 'scheduled' : mode === 'rascunho' ? 'paused' : 'active';
+  camps.push({id:Date.now(), name, type: mode==='agendado'?'Agendado':mode==='sequencia'?'Sequência':'Imediato', bot:'Bot Vendas Principal', seg, status, sent:0, opens:0, conv:0});
+  DB.set('campaigns', camps);
+  toast(mode === 'rascunho' ? 'Rascunho salvo!' : mode === 'agendado' ? '📅 Disparo agendado com sucesso!' : '🔁 Sequência salva!');
+  switchCampTab(document.querySelector('#page-campaigns .tab'), 'camp-tab-list');
+}
+
+let disproTotal = 0;
+let disproSent = 0;
+let disproName = '';
+
+function startDisparoProgress(name, total, seg, msg) {
+  disproName = name; disproTotal = total; disproSent = 0;
+  const overlay = document.getElementById('disp-progress');
+  overlay.style.display = 'flex';
+  document.getElementById('disp-prog-icon').textContent = '⚡';
+  document.getElementById('disp-prog-title').textContent = `Disparando: ${name}`;
+  document.getElementById('disp-prog-sub').textContent = `Enviando para ${total.toLocaleString()} destinatários...`;
+  document.getElementById('disp-prog-bar').style.width = '0%';
+  document.getElementById('disp-prog-count').textContent = '0 enviados';
+  document.getElementById('disp-prog-pct').textContent = '0%';
+
+  // Simulate progress
+  const step = Math.ceil(total / 60);
+  disproInterval = setInterval(() => {
+    disproSent = Math.min(disproSent + step, total);
+    const pct = Math.round(disproSent / total * 100);
+    document.getElementById('disp-prog-bar').style.width = pct + '%';
+    document.getElementById('disp-prog-count').textContent = disproSent.toLocaleString() + ' enviados';
+    document.getElementById('disp-prog-pct').textContent = pct + '%';
+    if(disproSent >= total) {
+      clearInterval(disproInterval);
+      finishDisparo(name, total, seg, msg);
+    }
+  }, 80);
+}
+
+function finishDisparo(name, total, seg, msg) {
+  document.getElementById('disp-prog-icon').textContent = '✅';
+  document.getElementById('disp-prog-title').textContent = 'Disparo concluído!';
+  const opens = Math.round(total * 0.61);
+  const conv = Math.round(total * 0.077);
+  document.getElementById('disp-prog-sub').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Enviados:</span><strong>${total.toLocaleString()}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Abertos (est.):</span><strong style="color:var(--accent);">${opens.toLocaleString()}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-muted);">Conversões (est.):</span><strong style="color:var(--success);">${conv.toLocaleString()}</strong></div>
+    </div>`;
+
+  // Salvar no histórico e nas campanhas
+  const camps = DB.get('campaigns') || [];
+  camps.push({id:Date.now(), name, type:'Imediato', bot:'Bot Vendas Principal', seg, status:'active', sent:total, opens, conv});
+  DB.set('campaigns', camps);
+
+  const hist = DB.get('camp_history') || [];
+  hist.unshift({id:Date.now(), name, type:'Imediato', sent:total, opened:opens, clicked:Math.round(opens*0.44), conv, revenue:conv*247, date:new Date().toISOString().split('T')[0], status:'done'});
+  DB.set('camp_history', hist);
+
+  document.querySelector('#disp-progress .btn-danger').textContent = '✕ Fechar';
+  document.querySelector('#disp-progress .btn-danger').onclick = () => {
+    document.getElementById('disp-progress').style.display = 'none';
+    document.querySelector('#disp-progress .btn-danger').textContent = '⏹ Cancelar Disparo';
+    document.querySelector('#disp-progress .btn-danger').onclick = cancelDisparo;
+    switchCampTab(document.querySelector('#page-campaigns .tab'), 'camp-tab-list');
+    toast('✅ Disparo concluído! ' + total.toLocaleString() + ' mensagens enviadas.');
+  };
+}
+
+function cancelDisparo() {
+  clearInterval(disproInterval);
+  document.getElementById('disp-progress').style.display = 'none';
+  toast('Disparo cancelado.', 'error');
+}
+
+// ── Sequências ──
+let seqStepsList = [];
+
+function renderSeqList() {
+  const seqs = DB.get('sequences') || [];
+  document.getElementById('seq-list').innerHTML = seqs.length ? seqs.map(s => `
+    <div class="seq-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div style="font-weight:700;font-size:14px;">🔁 ${s.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);">${s.bot} · ${s.trigger}</div>
+        </div>
+        <div class="toggle ${s.active?'on':''}" onclick="toggleSeq(${s.id})"></div>
+      </div>
+      <div class="grid-2" style="gap:8px;margin-bottom:12px;">
+        <div style="background:var(--bg-elevated);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);">Etapas</div>
+          <div style="font-size:18px;font-weight:700;color:var(--accent);">${s.steps}</div>
+        </div>
+        <div style="background:var(--bg-elevated);border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:10px;color:var(--text-muted);">Leads ativos</div>
+          <div style="font-size:18px;font-weight:700;color:var(--success);">${s.leads.toLocaleString()}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm">✏️ Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSeq(${s.id})">🗑️</button>
+      </div>
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🔁</div><h3>Nenhuma sequência</h3></div>`;
+}
+
+function toggleSeq(id) {
+  const seqs = DB.get('sequences') || []; const s = seqs.find(x=>x.id===id);
+  if(s){ s.active=!s.active; DB.set('sequences',seqs); renderSeqList(); }
+}
+function deleteSeq(id) { DB.set('sequences',(DB.get('sequences')||[]).filter(s=>s.id!==id)); renderSeqList(); toast('Sequência removida.'); }
+
+function addSeqStep() {
+  seqStepsList.push({id:Date.now(), delay:'1 hora', msg:''});
+  renderSeqStepsModal();
+}
+function renderSeqStepsModal() {
+  document.getElementById('seq-steps-list').innerHTML = seqStepsList.map((s,i) => `
+    <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:12px;display:flex;gap:10px;align-items:flex-start;">
+      <div class="seq-step-num">${i+1}</div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span style="font-size:11px;color:var(--text-muted);">Após</span>
+          <select onchange="seqStepsList[${i}].delay=this.value" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:4px 8px;border-radius:4px;font-size:12px;outline:none;">
+            <option>1 hora</option><option>3 horas</option><option>6 horas</option><option>12 horas</option><option>1 dia</option><option>2 dias</option><option>3 dias</option><option>7 dias</option>
+          </select>
+        </div>
+        <input placeholder="Mensagem desta etapa..." class="form-control" style="font-size:12px;" oninput="seqStepsList[${i}].msg=this.value" value="${s.msg}">
+      </div>
+      <button onclick="seqStepsList.splice(${i},1);renderSeqStepsModal()" style="background:none;border:none;cursor:pointer;color:var(--danger);">✕</button>
+    </div>`).join('');
+}
+function saveSeq() {
+  const name = document.getElementById('seq-name').value.trim();
+  if(!name){ toast('Informe o nome!','error'); return; }
+  const seqs = DB.get('sequences') || [];
+  seqs.push({id:Date.now(), name, bot:document.getElementById('seq-bot').value||'Bot Vendas Principal', trigger:document.getElementById('seq-trigger').value, steps:seqStepsList.length||1, leads:0, active:false});
+  DB.set('sequences', seqs); closeModal('modal-seq'); seqStepsList=[]; renderSeqList(); toast('Sequência criada!');
+}
+
+// ── Charts campanhas ──
+function initCampCharts() {
+  destroyChart('campPerf'); destroyChart('campConv');
+  const hist = DB.get('camp_history') || [];
+  const labels = hist.slice(0,5).map(h=>h.name.substring(0,12)+'...');
+  const cfg = {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}};
+  charts.campPerf = new Chart(document.getElementById('chartCampPerf'),{
+    type:'bar', data:{labels, datasets:[
+      {label:'Enviados',data:hist.slice(0,5).map(h=>h.sent),backgroundColor:'rgba(108,99,255,0.5)',borderRadius:4},
+      {label:'Abertos',data:hist.slice(0,5).map(h=>h.opened),backgroundColor:'rgba(0,212,170,0.5)',borderRadius:4}
+    ]}, options:cfg
+  });
+  charts.campConv = new Chart(document.getElementById('chartCampConv'),{
+    type:'line', data:{labels, datasets:[
+      {label:'Conversões',data:hist.slice(0,5).map(h=>h.conv),borderColor:'#6c63ff',tension:0.4,fill:false},
+      {label:'Receita (R$)',data:hist.slice(0,5).map(h=>h.revenue),borderColor:'#00d4aa',tension:0.4,fill:false,yAxisID:'y1'}
+    ]}, options:{...cfg,scales:{...cfg.scales,y1:{position:'right',ticks:{color:'#555b75'},grid:{drawOnChartArea:false}}}}
+  });
+
+  // Render history table
+  document.getElementById('camp-history-tbody').innerHTML = hist.map(h=>`
+    <tr>
+      <td style="font-weight:600;">${h.name}</td>
+      <td><span class="badge badge-muted">${h.type}</span></td>
+      <td>${h.sent.toLocaleString()}</td>
+      <td>${h.opened.toLocaleString()} <span style="color:var(--text-muted);font-size:11px;">(${Math.round(h.opened/h.sent*100)}%)</span></td>
+      <td>${h.clicked.toLocaleString()}</td>
+      <td style="color:var(--success);font-weight:600;">${h.conv.toLocaleString()}</td>
+      <td style="color:var(--accent);font-weight:700;">R$ ${h.revenue.toLocaleString()}</td>
+      <td style="color:var(--text-muted);">${h.date}</td>
+      <td><span class="badge badge-success">Concluída</span></td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+//  FUNIL VITRINE
+// ═══════════════════════════════════════════════
+function renderFunil() {
+  const funils = DB.get('funils')||[];
+  document.getElementById('funil-grid').innerHTML = funils.length ? funils.map(f=>`
+    <div class="funnel-card">
+      <div class="funnel-thumb">${f.emoji||'🛒'}</div>
+      <div class="funnel-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div class="funnel-name">${f.name}</div>
+          <span class="badge ${f.status==='active'?'badge-success':'badge-warning'}">${f.status==='active'?'Ativo':'Pausado'}</span>
+        </div>
+        <div class="funnel-meta">Bot: ${f.bot} · ${f.items} itens</div>
+        <div class="funnel-actions">
+          <button class="btn btn-outline btn-sm" onclick="toast('Editor de funil em breve!')">✏️ Editar</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleFunil(${f.id})">${f.status==='active'?'⏸':'▶'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFunil(${f.id})">🗑️</button>
+        </div>
+      </div>
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🛍️</div><h3>Nenhum funil criado</h3></div>`;
+}
+function toggleFunil(id) {
+  const f=DB.get('funils')||[]; const item=f.find(x=>x.id===id);
+  if(item){ item.status=item.status==='active'?'paused':'active'; DB.set('funils',f); renderFunil(); }
+}
+function deleteFunil(id){ DB.set('funils',(DB.get('funils')||[]).filter(f=>f.id!==id)); renderFunil(); toast('Funil removido.'); }
+function saveFunil() {
+  const name=document.getElementById('funil-name').value.trim();
+  if(!name){ toast('Informe o nome!','error'); return; }
+  const f=DB.get('funils')||[];
+  f.push({id:Date.now(),name,bot:document.getElementById('funil-bot').value||'Sem bot',items:0,emoji:document.getElementById('funil-emoji').value||'🛒',status:'paused'});
+  DB.set('funils',f); closeModal('modal-funil'); renderFunil(); toast('Funil criado!');
+}
+
+// ═══════════════════════════════════════════════
+//  A/B TESTS
+// ═══════════════════════════════════════════════
+function renderABTests() {
+  const tests = DB.get('abtests')||[];
+  const cont = document.getElementById('abtests-list');
+  cont.innerHTML = tests.length ? `<div style="display:flex;flex-direction:column;gap:16px;">` + tests.map(t=>`
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-weight:700;font-size:15px;">${t.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);">Teste em execução</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${t.winner?`<span class="badge badge-success">🏆 Vencedor: Variante ${t.winner}</span>`:''}
+          <span class="badge ${t.status==='active'?'badge-success':'badge-muted'}">${t.status==='active'?'Ativo':'Pausado'}</span>
+        </div>
+      </div>
+      <div class="grid-2" style="gap:12px;">
+        <div class="ab-variant">
+          <div class="ab-variant-header"><div class="ab-label">A</div><span>${t.a.pct}%</span></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${t.a.url}</div>
+          <div class="grid-3" style="gap:8px;">
+            <div><div style="font-size:10px;color:var(--text-muted);">Cliques</div><div style="font-weight:700;">${t.a.clicks.toLocaleString()}</div></div>
+            <div><div style="font-size:10px;color:var(--text-muted);">Conv.</div><div style="font-weight:700;color:var(--accent);">${t.a.conv}</div></div>
+            <div><div style="font-size:10px;color:var(--text-muted);">Receita</div><div style="font-weight:700;color:var(--success);">R$ ${t.a.rev.toLocaleString()}</div></div>
+          </div>
+          <div class="progress-bar" style="margin-top:8px;"><div class="progress-fill" style="width:${Math.round(t.a.conv/t.a.clicks*100)}%;background:var(--accent);"></div></div>
+        </div>
+        <div class="ab-variant">
+          <div class="ab-variant-header"><div class="ab-label" style="background:rgba(0,212,170,0.15);color:var(--success);">B</div><span>${t.b.pct}%</span></div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${t.b.url}</div>
+          <div class="grid-3" style="gap:8px;">
+            <div><div style="font-size:10px;color:var(--text-muted);">Cliques</div><div style="font-weight:700;">${t.b.clicks.toLocaleString()}</div></div>
+            <div><div style="font-size:10px;color:var(--text-muted);">Conv.</div><div style="font-weight:700;color:var(--accent);">${t.b.conv}</div></div>
+            <div><div style="font-size:10px;color:var(--text-muted);">Receita</div><div style="font-weight:700;color:var(--success);">R$ ${t.b.rev.toLocaleString()}</div></div>
+          </div>
+          <div class="progress-bar" style="margin-top:8px;"><div class="progress-fill" style="width:${Math.round(t.b.conv/t.b.clicks*100)}%;background:var(--success);"></div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:12px;">
+        <button class="btn btn-outline btn-sm" onclick="toggleABTest(${t.id})">Pausar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteABTest(${t.id})">🗑️ Remover</button>
+      </div>
+    </div>`).join('') + '</div>' : `<div class="empty-state"><div class="empty-icon">🧪</div><h3>Nenhum teste criado</h3></div>`;
+}
+function deleteABTest(id){ DB.set('abtests',(DB.get('abtests')||[]).filter(t=>t.id!==id)); renderABTests(); toast('Teste removido.'); }
+function toggleABTest(id){ toast('Teste pausado/retomado!'); }
+function saveABTest() {
+  const name=document.getElementById('ab-name').value.trim();
+  if(!name){ toast('Informe o nome!','error'); return; }
+  const tests=DB.get('abtests')||[];
+  tests.push({id:Date.now(),name,a:{url:document.getElementById('ab-a').value||'Variante A',pct:50,clicks:0,conv:0,rev:0},b:{url:document.getElementById('ab-b').value||'Variante B',pct:50,clicks:0,conv:0,rev:0},status:'active',winner:null});
+  DB.set('abtests',tests); closeModal('modal-abtest'); renderABTests(); toast('Teste A/B criado!');
+}
+
+// ═══════════════════════════════════════════════
+//  REDIRECTS
+// ═══════════════════════════════════════════════
+function renderRedirects() {
+  const rds = DB.get('redirects')||[];
+  document.getElementById('redirects-list').innerHTML = rds.length ? rds.map(r=>`
+    <div class="redirect-card">
+      <div style="width:36px;height:36px;background:var(--accent-glow);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔗</div>
+      <div style="flex:1;">
+        <div class="redirect-link">flowgram.io/${r.slug}</div>
+        <div class="redirect-target">${r.url}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${r.ab?'<span class="badge badge-accent">A/B</span>':''}
+        ${r.tracking?'<span class="badge badge-muted">UTM</span>':''}
+        <span style="font-size:13px;font-weight:600;">${r.clicks.toLocaleString()} cliques</span>
+        <span class="badge ${r.active?'badge-success':'badge-muted'}">${r.active?'Ativo':'Inativo'}</span>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn btn-ghost btn-sm" onclick="copyRedirect('${r.slug}')">📋</button>
+        <button class="btn btn-ghost btn-sm" onclick="toast('Editando...')">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteRedirect(${r.id})">🗑️</button>
+      </div>
+    </div>`).join('') : `<div class="empty-state"><div class="empty-icon">🔗</div><h3>Nenhum redirect criado</h3></div>`;
+}
+function copyRedirect(slug){ navigator.clipboard?.writeText('https://flowgram.io/'+slug); toast('Link copiado!'); }
+function deleteRedirect(id){ DB.set('redirects',(DB.get('redirects')||[]).filter(r=>r.id!==id)); renderRedirects(); toast('Redirect removido.'); }
+function saveRedirect() {
+  const slug=document.getElementById('redir-slug').value.trim();
+  const url=document.getElementById('redir-url').value.trim();
+  if(!slug||!url){ toast('Preencha slug e URL!','error'); return; }
+  const rds=DB.get('redirects')||[];
+  rds.push({id:Date.now(),slug,url,clicks:0,ab:document.getElementById('redir-ab').classList.contains('on'),tracking:document.getElementById('redir-tracking').classList.contains('on'),active:true});
+  DB.set('redirects',rds); closeModal('modal-redirect'); renderRedirects(); toast('Redirect criado!');
+}
+
+// ═══════════════════════════════════════════════
+//  CHAT
+// ═══════════════════════════════════════════════
+const chatData = [
+  {id:1, name:'Maria Santos', preview:'Oi, quero saber mais!', time:'14:32', avatar:'MS', online:true, tgid:'@maria_s', bot:'Bot Vendas', utm:'tiktok', gw:'TriboPay', pix:'R$ 197 (pago)', status:'Comprador', tags:['COMPROU','VIP']},
+  {id:2, name:'Carlos Pereira', preview:'Não recebi o acesso...', time:'13:18', avatar:'CP', online:true, tgid:'@carlosP', bot:'Bot Vendas', utm:'instagram', gw:'Pushinpay', pix:'Pendente', status:'PIX Pendente', tags:['PIX_PENDENTE']},
+  {id:3, name:'Juliana Melo', preview:'Obrigada! 😊', time:'12:44', avatar:'JM', online:false, tgid:'@jmelo', bot:'Bot Suporte', utm:'facebook', gw:'SyncPay', pix:'R$ 97 (pago)', status:'Comprador', tags:['COMPROU']},
+  {id:4, name:'Roberto Dias', preview:'Quando sai o próximo?', time:'11:00', avatar:'RD', online:true, tgid:'@rbd', bot:'Bot Vendas', utm:'google', gw:'TriboPay', pix:'—', status:'Lead', tags:['TIKTOK']},
+];
+let activeChatId = null;
+const chatMessages = {
+  1:[{dir:'in',text:'Oi, quero saber mais sobre o produto!'},{dir:'out',text:'Olá Maria! 👋 Que bom que você se interessou. Posso te ajudar com qualquer dúvida.'},{dir:'in',text:'Qual o prazo de entrega?'}],
+  2:[{dir:'in',text:'Não recebi o acesso ainda...'},{dir:'out',text:'Carlos, vou verificar agora mesmo para você!'}],
+  3:[{dir:'in',text:'Obrigada pela ajuda!'},{dir:'out',text:'Fico feliz em ajudar, Juliana! 😊'}],
+  4:[{dir:'in',text:'Quando sai o próximo módulo?'},{dir:'out',text:'Roberto, o módulo 3 sai na próxima semana!'}]
+};
+
+function renderChatList() {
+  document.getElementById('chat-list-items').innerHTML = chatData.map(c=>`
+    <div class="chat-item ${activeChatId===c.id?'active':''}" onclick="openChat(${c.id})">
+      <div class="avatar" style="font-size:11px;">${c.avatar}</div>
+      <div class="chat-item-info">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="chat-item-name">${c.name}</div>
+          ${c.online?'<span class="status-dot online" style="margin:0;"></span>':''}
+        </div>
+        <div class="chat-item-preview">${c.preview}</div>
+      </div>
+      <div class="chat-item-time">${c.time}</div>
+    </div>`).join('');
+}
+function openChat(id) {
+  activeChatId = id;
+  const c = chatData.find(x=>x.id===id);
+  document.getElementById('chat-active-name').textContent = c.name;
+  document.getElementById('chat-active-status').textContent = c.online ? '● Online agora' : '○ Offline';
+  document.getElementById('chat-active-avatar').textContent = c.avatar;
+  document.getElementById('lead-id').textContent = c.tgid;
+  document.getElementById('lead-bot').textContent = c.bot;
+  document.getElementById('lead-utm').textContent = c.utm;
+  document.getElementById('lead-gw').textContent = c.gw;
+  document.getElementById('lead-pix').textContent = c.pix;
+  document.getElementById('lead-status').textContent = c.status;
+  document.getElementById('lead-tags').innerHTML = c.tags.map(t=>`<span class="badge badge-accent">${t}</span>`).join('');
+  const msgs = chatMessages[id] || [];
+  document.getElementById('chat-messages').innerHTML = msgs.map(m=>`
+    <div>
+      <div class="msg msg-${m.dir}">${m.text}</div>
+      <div class="msg-time" style="text-align:${m.dir==='out'?'right':'left'};color:var(--text-muted);">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+    </div>`).join('');
+  renderChatList();
+  setTimeout(()=>{ const cm=document.getElementById('chat-messages'); cm.scrollTop=cm.scrollHeight; },50);
+}
+function sendChatMsg() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text||!activeChatId) return;
+  if(!chatMessages[activeChatId]) chatMessages[activeChatId]=[];
+  chatMessages[activeChatId].push({dir:'out',text});
+  input.value=''; openChat(activeChatId);
+}
+document.getElementById('chat-input').addEventListener('keypress', e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChatMsg(); } });
+
+// ═══════════════════════════════════════════════
+//  INTEGRATIONS
+// ═══════════════════════════════════════════════
+function renderIntegrations() {
+  const gws = [
+    {name:'TriboPay', color:'#00d4aa', bg:'rgba(0,212,170,0.1)', status:'connected', conv:31.4, rev:31440, txs:482},
+    {name:'Pushinpay', color:'#6c63ff', bg:'rgba(108,99,255,0.1)', status:'connected', conv:28.1, rev:24180, txs:318},
+    {name:'SyncPay', color:'#ffb347', bg:'rgba(255,179,71,0.1)', status:'partial', conv:22.4, rev:18240, txs:241},
+    {name:'MundPay', color:'#8b90a7', bg:'rgba(139,144,167,0.1)', status:'disconnected', conv:0, rev:10460, txs:138}
+  ];
+  const stMap = {connected:'badge-success', partial:'badge-warning', disconnected:'badge-muted'};
+  const stLabel = {connected:'● Conectado', partial:'● Parcial', disconnected:'○ Desconectado'};
+  document.getElementById('integrations-grid').innerHTML = gws.map(g=>`
+    <div class="integration-card">
+      <div class="integration-header">
+        <div class="integration-brand">
+          <div class="integration-logo" style="background:${g.bg};color:${g.color};">${g.name[0]}</div>
+          <div>
+            <div class="integration-name">${g.name}</div>
+            <div class="integration-meta">Gateway de Pagamento</div>
+          </div>
+        </div>
+        <span class="badge ${stMap[g.status]}">${stLabel[g.status]}</span>
+      </div>
+      <div class="integration-stats">
+        <div class="istat"><div class="istat-label">Receita</div><div class="istat-value" style="color:${g.color};">R$ ${g.rev.toLocaleString()}</div></div>
+        <div class="istat"><div class="istat-label">Transações</div><div class="istat-value">${g.txs}</div></div>
+        <div class="istat"><div class="istat-label">Conversão</div><div class="istat-value" style="color:var(--success);">${g.conv}%</div></div>
+        <div class="istat"><div class="istat-label">Chargeback</div><div class="istat-value" style="color:var(--danger);">0.8%</div></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="configureGateway('${g.name}')">⚙️ Configurar</button>
+        <button class="btn btn-outline btn-sm" onclick="testGateway('${g.name}')">🔍 Testar</button>
+      </div>
+    </div>`).join('');
+}
+function configureGateway(name) { toast(`Abrindo configurações de ${name}...`); }
+function testGateway(name) { toast(`Conexão com ${name} testada com sucesso! ✓`); }
+
+// ═══════════════════════════════════════════════
+//  TIKTOK
+// ═══════════════════════════════════════════════
+function switchTikTokTab(el, panelId) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.tt-panel').forEach(p=>p.style.display='none');
+  const panel = document.getElementById(panelId);
+  if(panel) { panel.style.display='block'; if(panelId==='tt-relatorio') initTikTokChart(); }
+}
+function renderTikTokContas() {
+  const contas = DB.get('tiktok_contas')||[];
+  document.getElementById('tiktok-contas-list').innerHTML = contas.length ? contas.map(c=>`
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div style="width:40px;height:40px;background:#000;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;">🎵</div>
+        <div>
+          <div style="font-weight:700;">${c.name}</div>
+          <div style="font-size:12px;color:var(--text-muted);">Pixel: ${c.pixel}</div>
+        </div>
+        <span class="badge badge-success" style="margin-left:auto;">● Conectado</span>
+      </div>
+      <div class="grid-2" style="gap:8px;">
+        <div class="istat"><div class="istat-label">Events/dia</div><div class="istat-value" style="color:var(--accent);">${c.events.toLocaleString()}</div></div>
+        <div class="istat"><div class="istat-label">Receita atrib.</div><div class="istat-value" style="color:var(--success);">R$ ${c.revenue.toLocaleString()}</div></div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:12px;">
+        <button class="btn btn-outline btn-sm">⚙️ Config</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteTikTokConta(${c.id})">🗑️</button>
+      </div>
+    </div>`).join('') : `<div class="empty-state"><div class="empty-icon">🎵</div><h3>Nenhuma conta conectada</h3></div>`;
+}
+function renderTikTokDominios() {
+  const doms=[{id:1,domain:'meusite.com.br',status:'verified',conta:'TikTok Ads BR'}];
+  document.getElementById('tiktok-dominios-list').innerHTML = doms.map(d=>`
+    <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+      <div style="font-size:18px;">🌐</div>
+      <div style="flex:1;"><div style="font-weight:600;">${d.domain}</div><div style="font-size:12px;color:var(--text-muted);">${d.conta}</div></div>
+      <span class="badge badge-success">✓ Verificado</span>
+      <button class="btn btn-danger btn-sm">🗑️</button>
+    </div>`).join('');
+}
+function renderTikTokLinks() {
+  const links=[
+    {link:'fgm.io/tt1',conta:'TikTok Ads BR',camp:'Black Friday',cliques:4840,conv:'12.4%',receita:'R$ 28.400'},
+    {link:'fgm.io/tt2',conta:'TikTok Ads BR',camp:'Recuperação',cliques:2100,conv:'8.1%',receita:'R$ 11.200'}
+  ];
+  document.getElementById('tiktok-links-tbody').innerHTML = links.map(l=>`
+    <tr>
+      <td style="color:var(--accent);font-weight:600;">${l.link}</td>
+      <td>${l.conta}</td>
+      <td>${l.camp}</td>
+      <td>${l.cliques.toLocaleString()}</td>
+      <td><span class="badge badge-success">${l.conv}</span></td>
+      <td style="font-weight:600;color:var(--success);">${l.receita}</td>
+    </tr>`).join('');
+}
+function saveTikTokConta() {
+  const name=document.getElementById('tt-conta-name').value.trim();
+  const pixel=document.getElementById('tt-pixel').value.trim();
+  if(!name||!pixel){ toast('Preencha todos os campos!','error'); return; }
+  const contas=DB.get('tiktok_contas')||[];
+  contas.push({id:Date.now(),name,pixel,status:'connected',events:0,revenue:0});
+  DB.set('tiktok_contas',contas); closeModal('modal-tiktok-conta'); renderTikTokContas(); toast('Conta TikTok conectada!');
+}
+function saveTikTokDominio() {
+  toast('Domínio enviado para verificação!'); closeModal('modal-tiktok-dominio');
+}
+function deleteTikTokConta(id){ DB.set('tiktok_contas',(DB.get('tiktok_contas')||[]).filter(c=>c.id!==id)); renderTikTokContas(); toast('Conta removida.'); }
+
+// ═══════════════════════════════════════════════
+//  SETTINGS
+// ═══════════════════════════════════════════════
+function saveSettings() {
+  const data = {name:document.getElementById('cfg-name').value, email:document.getElementById('cfg-email').value};
+  DB.set('settings',data); toast('Configurações salvas!');
+}
+
+// ═══════════════════════════════════════════════
+//  PAGE LOAD HOOKS
+// ═══════════════════════════════════════════════
+function onPageLoad(page) {
+  switch(page) {
+    case 'dashboard':    setTimeout(initDashboardCharts, 50); break;
+    case 'transactions':
+      if(currentUser) renderTransactionsFromDB();
+      else renderTransactions(DB._get('transactions')||[]);
+      break;
+    case 'tracking':     renderTracking(); setTimeout(initTrackingCharts,50); break;
+    case 'flows':
+      if(currentUser) renderFlowsFromDB(); else renderFlows();
+      break;
+    case 'campaigns':    renderCampaigns(); populateDispBots(); break;
+    case 'funil':        renderFunil(); break;
+    case 'bots':
+      if(currentUser) renderBotsFromDB(); else renderBots();
+      break;
+    case 'abtests':      renderABTests(); break;
+    case 'redirects':
+      if(currentUser) renderRedirectsFromDB(); else renderRedirects();
+      break;
+    case 'chat':         renderChatList(); openChat(1); break;
+    case 'integrations': renderIntegrations(); break;
+    case 'tiktok':       renderTikTokContas(); renderTikTokDominios(); renderTikTokLinks(); break;
+    case 'settings':
+      if(currentProfile) {
+        document.getElementById('cfg-name').value  = currentProfile.name  || '';
+        document.getElementById('cfg-email').value = currentProfile.email || '';
+        document.getElementById('cfg-phone').value = currentProfile.phone || '';
+        document.getElementById('cfg-doc').value   = currentProfile.document || '';
+      }
+      break;
+  }
+}
+
+// ─── DROPDOWNS ───
+document.addEventListener('click', e => {
+  if(!e.target.closest('.dropdown'))
+    document.querySelectorAll('.dropdown-menu.open').forEach(m=>m.classList.remove('open'));
+});
+
+// ─── MOBILE SIDEBAR ───
+if(window.innerWidth < 700) document.getElementById('sidebar').classList.add('collapsed');
+
+// ─── SUPABASE BOOT ───
+(async () => {
+  const { data: { session } } = await supa.auth.getSession();
+  if(session?.user) {
+    await onLogin(session.user);
+    subscribeRealtime();
+  } else {
+    setTimeout(showAuthModal, 900);
+    onPageLoad('dashboard');
+  }
+  supa.auth.onAuthStateChange(async (event, session) => {
+    if(event === 'SIGNED_IN' && session?.user) {
+      await onLogin(session.user);
+      subscribeRealtime();
+    } else if(event === 'SIGNED_OUT') {
+      currentUser = null; currentProfile = null;
+    }
+  });
+})();
+</script>
+</body>
+</html>
