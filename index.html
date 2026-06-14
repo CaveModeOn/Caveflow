@@ -1576,7 +1576,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
             <div class="section-title" style="margin-bottom:4px;"><span class="dot"></span>Central de Bots</div>
             <div style="font-size:13px;color:var(--text-muted);">Gerencie seus bots do Telegram</div>
           </div>
-          <button class="btn btn-primary" onclick="openModal('modal-bot')">+ Novo Bot</button>
+          <button class="btn btn-primary" onclick="clearBotPreview();openModal('modal-bot')">+ Novo Bot</button>
         </div>
         <div class="grid-3" id="bots-grid"></div>
       </div>
@@ -1822,17 +1822,46 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 <!-- New Bot -->
 <div class="modal-overlay" id="modal-bot">
   <div class="modal">
-    <div class="modal-title">🤖 Novo Bot<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-bot')">✕</button></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Nome do Bot</label><input class="form-control" id="bot-name" placeholder="Meu Bot de Vendas"></div>
-      <div class="form-group"><label class="form-label">Tipo</label><select class="form-control" id="bot-type"><option value="normal">Normal</option><option value="business">Business</option></select></div>
+    <div class="modal-title">🤖 Adicionar Bot<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-bot')">✕</button></div>
+
+    <!-- Step 1: token -->
+    <div id="bot-step-1">
+      <div class="form-group">
+        <label class="form-label">Token do BotFather</label>
+        <input class="form-control" id="bot-token" placeholder="123456789:AAH_xxxxx" oninput="clearBotPreview()">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Cole o token que o @BotFather te enviou</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-control" id="bot-type">
+          <option value="normal">Normal</option>
+          <option value="business">Business</option>
+        </select>
+      </div>
+
+      <!-- Preview após validar -->
+      <div id="bot-preview" style="display:none;background:var(--bg-elevated);border-radius:var(--radius);padding:14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:44px;height:44px;background:var(--accent-glow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;">🤖</div>
+          <div>
+            <div style="font-weight:700;font-size:14px;" id="bot-preview-name">—</div>
+            <div style="font-size:12px;color:var(--text-muted);" id="bot-preview-username">—</div>
+          </div>
+          <span class="badge badge-success" style="margin-left:auto;">✓ Válido</span>
+        </div>
+      </div>
+
+      <div id="bot-error" style="display:none;background:rgba(255,77,106,0.1);border:1px solid rgba(255,77,106,0.2);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;color:var(--danger);margin-bottom:12px;"></div>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline" style="flex:1;" onclick="fetchBotInfo()">🔍 Buscar Informações</button>
+        <button class="btn btn-primary" style="flex:1;" id="bot-save-btn" onclick="saveBot()" disabled style="opacity:0.5;">Salvar Bot</button>
+      </div>
     </div>
-    <div class="form-group"><label class="form-label">Username (@)</label><input class="form-control" id="bot-username" placeholder="@MeuBot"></div>
-    <div class="form-group"><label class="form-label">Token BotFather</label><input class="form-control" id="bot-token" placeholder="123456789:AAH_xxxxx"></div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button class="btn btn-outline" onclick="validateBotToken()">🔍 Validar Token</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="saveBot()">Salvar Bot</button>
-    </div>
+
+    <!-- campos ocultos preenchidos automaticamente -->
+    <input type="hidden" id="bot-name">
+    <input type="hidden" id="bot-username">
   </div>
 </div>
 
@@ -2262,6 +2291,7 @@ async function onLogin(user) {
   currentProfile = data;
   updateUserUI(data || { name: user.email, plan: 'Pro' });
   toast('✅ Bem-vindo! Dados sincronizados com a nuvem.');
+  await populateAllBotDropdowns();
   onPageLoad(currentPage);
 }
 
@@ -2320,26 +2350,106 @@ function subscribeRealtime() {
 // ═══════════════════════════════════════════════
 //  SUPABASE CRUD — BOTS
 // ═══════════════════════════════════════════════
+// ── Buscar informações do bot pelo token ───────────────────
+async function fetchBotInfo() {
+  const token = document.getElementById('bot-token').value.trim();
+  if(!token) { showBotError('Cole o token primeiro.'); return; }
+
+  const btn = document.querySelector('#bot-step-1 .btn-outline');
+  btn.textContent = '⏳ Buscando...';
+  btn.disabled = true;
+
+  try {
+    const res  = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const data = await res.json();
+
+    if(!data.ok) {
+      showBotError('Token inválido. Verifique e tente novamente.');
+      btn.textContent = '🔍 Buscar Informações';
+      btn.disabled = false;
+      return;
+    }
+
+    const bot = data.result;
+    // Preencher campos ocultos
+    document.getElementById('bot-name').value     = bot.first_name || bot.username;
+    document.getElementById('bot-username').value = '@' + bot.username;
+
+    // Mostrar preview
+    document.getElementById('bot-preview-name').textContent     = bot.first_name || bot.username;
+    document.getElementById('bot-preview-username').textContent = '@' + bot.username;
+    document.getElementById('bot-preview').style.display        = 'block';
+    document.getElementById('bot-error').style.display          = 'none';
+
+    // Habilitar botão salvar
+    const saveBtn = document.getElementById('bot-save-btn');
+    saveBtn.removeAttribute('disabled');
+    saveBtn.style.opacity = '1';
+
+    btn.textContent = '✓ Informações carregadas';
+
+  } catch(e) {
+    showBotError('Erro ao conectar. Verifique sua internet.');
+    btn.textContent = '🔍 Buscar Informações';
+    btn.disabled = false;
+  }
+}
+
+function showBotError(msg) {
+  const el = document.getElementById('bot-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearBotPreview() {
+  document.getElementById('bot-preview').style.display = 'none';
+  document.getElementById('bot-error').style.display   = 'none';
+  document.getElementById('bot-name').value            = '';
+  document.getElementById('bot-username').value        = '';
+  const saveBtn = document.getElementById('bot-save-btn');
+  saveBtn.setAttribute('disabled', true);
+  saveBtn.style.opacity = '0.5';
+  document.querySelector('#bot-step-1 .btn-outline').textContent = '🔍 Buscar Informações';
+  document.querySelector('#bot-step-1 .btn-outline').disabled = false;
+}
+
 async function saveBot() {
   const name     = document.getElementById('bot-name').value.trim();
   const username = document.getElementById('bot-username').value.trim();
   const token    = document.getElementById('bot-token').value.trim();
   const type     = document.getElementById('bot-type').value;
-  if(!name||!token){ toast('Preencha todos os campos!','error'); return; }
+
+  if(!name || !token) {
+    showBotError('Clique em "Buscar Informações" primeiro.');
+    return;
+  }
+
+  const saveBtn = document.getElementById('bot-save-btn');
+  saveBtn.textContent = '⏳ Salvando...';
+  saveBtn.disabled    = true;
 
   const row = await DB.insert('bots', { name, username, token, type, active: false });
-  if(!row){ toast('Erro ao salvar bot.','error'); return; }
+  if(!row) {
+    showBotError('Erro ao salvar. Tente novamente.');
+    saveBtn.textContent = 'Salvar Bot';
+    saveBtn.disabled    = false;
+    return;
+  }
 
-  // Também atualiza localStorage para funções legadas
+  // Sync local
   const local = DB._get('bots') || [];
-  local.push({id: row.id, name, username, token, type, active: false});
+  local.push({ id: row.id, name, username, token, type, active: false });
   DB._set('bots', local);
 
+  // Recarregar dropdowns em todas as abas
+  await populateAllBotDropdowns();
+
   closeModal('modal-bot');
-  document.getElementById('bot-name').value = '';
+  clearBotPreview();
   document.getElementById('bot-token').value = '';
+
   await renderBotsFromDB();
-  toast('Bot salvo na nuvem! ☁️');
+  toast(`Bot "${name}" salvo na nuvem! ☁️`);
 }
 
 async function renderBotsFromDB() {
@@ -3068,23 +3178,7 @@ function deleteBot(id) {
   DB.set('bots',bots); renderBots(); toast('Bot removido.');
 }
 function editBot(id) { toast('Editor de bot em breve!'); }
-function saveBot() {
-  const name = document.getElementById('bot-name').value.trim();
-  const username = document.getElementById('bot-username').value.trim();
-  const token = document.getElementById('bot-token').value.trim();
-  const type = document.getElementById('bot-type').value;
-  if(!name||!token){ toast('Preencha todos os campos!','error'); return; }
-  const bots = DB.get('bots')||[];
-  bots.push({id:Date.now(), name, username, token, type, active:false});
-  DB.set('bots', bots); closeModal('modal-bot');
-  document.getElementById('bot-name').value=''; document.getElementById('bot-token').value='';
-  renderBots(); toast('Bot salvo com sucesso!');
-}
-function validateBotToken() {
-  const token = document.getElementById('bot-token').value.trim();
-  if(!token){ toast('Insira um token primeiro!','error'); return; }
-  toast('Token validado! ✓');
-}
+// saveBot e validateBotToken substituídos pela versão Supabase abaixo
 
 // ═══════════════════════════════════════════════
 //  FLOWS
@@ -3484,14 +3578,31 @@ function renderDispButtons() {
 function updateBtnText(id, v) { const b = dispButtons.find(x=>x.id===id); if(b){ b.text=v; renderDispButtons(); } }
 function updateBtnUrl(id, v) { const b = dispButtons.find(x=>x.id===id); if(b) b.url=v; }
 
-// ── Populate bots dropdowns ──
-function populateDispBots() {
-  const bots = DB.get('bots') || [];
-  ['disp-bot','seq-bot'].forEach(id => {
-    const el = document.getElementById(id); if(!el) return;
-    el.innerHTML = bots.map(b=>`<option value="${b.id}">${b.name}</option>`).join('') || '<option>Nenhum bot cadastrado</option>';
+// ── Carregar bots em TODOS os dropdowns ─────────────────────
+async function populateAllBotDropdowns() {
+  let bots = [];
+  if(currentUser) {
+    const { data } = await supa.from('bots').select('id,name,username').eq('user_id', currentUser.id).order('created_at');
+    bots = data || [];
+    DB._set('bots', bots);
+  } else {
+    bots = DB._get('bots') || [];
+  }
+
+  const emptyOpt  = '<option value="">Selecionar Bot</option>';
+  const botOpts   = bots.length
+    ? bots.map(b => `<option value="${b.id}">${b.name} (${b.username||'sem username'})</option>`).join('')
+    : '<option value="">Nenhum bot cadastrado</option>';
+
+  const dropdowns = ['disp-bot','seq-bot','flow-bot','camp-bot','funil-bot'];
+  dropdowns.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = emptyOpt + botOpts;
   });
 }
+
+// Alias para compatibilidade
+async function populateDispBots() { await populateAllBotDropdowns(); }
 
 function confirmarDisparo() {
   const name = document.getElementById('disp-name').value.trim();
@@ -4178,9 +4289,10 @@ function onPageLoad(page) {
     case 'tracking':     renderTracking(); setTimeout(initTrackingCharts,50); break;
     case 'flows':
       if(currentUser) renderFlowsFromDB(); else renderFlows();
+      populateAllBotDropdowns();
       break;
-    case 'campaigns':    renderCampaigns(); populateDispBots(); break;
-    case 'funil':        renderFunil(); break;
+    case 'campaigns':    renderCampaigns(); populateAllBotDropdowns(); break;
+    case 'funil':        renderFunil(); populateAllBotDropdowns(); break;
     case 'bots':
       if(currentUser) renderBotsFromDB(); else renderBots();
       break;
