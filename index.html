@@ -3988,7 +3988,7 @@ async function renderFunil() {
           ${f.bot && f.bot !== '—' ? 'Bot: '+f.bot+' · ' : '<span style="color:var(--warning);font-size:11px;">⚠️ Sem bot · </span>'}${f.items} produto(s)
         </div>
         <div class="funnel-actions">
-          <button class="btn btn-primary btn-sm" onclick="openFunilConfig('${f.id}','${f.name.replace(/'/g,"\'")}','${f.emoji||'🛒'}','${f.status}','${f.botId||''}')">⚙️ Configurar</button>
+          <button class="btn btn-primary btn-sm" onclick="openFunilEditor('${f.id}')">⚙️ Configurar</button>
           <button class="btn btn-outline btn-sm" onclick="toggleFunilDB('${f.id}','${f.status}')">${f.status==='active'?'⏸':'▶'}</button>
           <button class="btn btn-danger btn-sm" onclick="deleteFunilDB('${f.id}')">🗑️</button>
         </div>
@@ -4010,6 +4010,11 @@ async function deleteFunilDB(id) {
 // aliases legados
 function toggleFunil(id) { toggleFunilDB(id,'paused'); }
 function deleteFunil(id)  { deleteFunilDB(id); }
+
+// ── Abrir editor completo de funil ──────────────────────────
+function openFunilEditor(id) {
+  window.open(`funil-editor.html?id=${id}`, '_blank');
+}
 // saveFunil legado removido — versão Supabase abaixo
 
 // ═══════════════════════════════════════════════
