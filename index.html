@@ -1117,38 +1117,38 @@ textarea.form-control { resize: vertical; min-height: 80px; }
           <div class="kpi-card accent">
             <div class="kpi-icon accent">💰</div>
             <div class="kpi-label">Faturamento Líquido</div>
-            <div class="kpi-value" style="color:var(--accent)">R$ 84.320</div>
-            <div class="kpi-delta up">↑ 18.4% este mês</div>
+            <div class="kpi-value" style="color:var(--accent)" id="kpi-total-revenue">R$ 0,00</div>
+            <div class="kpi-delta" id="kpi-total-revenue-delta" style="color:var(--text-muted)">— sem dados ainda</div>
           </div>
           <div class="kpi-card success">
             <div class="kpi-icon success">📅</div>
             <div class="kpi-label">Líquido Mês</div>
-            <div class="kpi-value" style="color:var(--success)">R$ 28.140</div>
-            <div class="kpi-delta up">↑ 12.1% vs anterior</div>
+            <div class="kpi-value" style="color:var(--success)" id="kpi-month-revenue">R$ 0,00</div>
+            <div class="kpi-delta" id="kpi-month-delta" style="color:var(--text-muted)">— sem dados ainda</div>
           </div>
           <div class="kpi-card warning">
             <div class="kpi-icon warning">👥</div>
             <div class="kpi-label">Total Leads</div>
-            <div class="kpi-value" style="color:var(--warning)">6.283</div>
-            <div class="kpi-delta up">↑ 341 esta semana</div>
+            <div class="kpi-value" style="color:var(--warning)" id="kpi-leads">0</div>
+            <div class="kpi-delta" style="color:var(--text-muted)" id="kpi-leads-delta">— sem dados ainda</div>
           </div>
           <div class="kpi-card accent">
             <div class="kpi-icon accent">⚡</div>
             <div class="kpi-label">Conversão PIX</div>
-            <div class="kpi-value" style="color:var(--accent)">31.4%</div>
-            <div class="kpi-delta down">↓ 2.1% vs anterior</div>
+            <div class="kpi-value" style="color:var(--accent)" id="kpi-pix-conv">0%</div>
+            <div class="kpi-delta" style="color:var(--text-muted)">PIX aprovados / total</div>
           </div>
           <div class="kpi-card success">
             <div class="kpi-icon success">💳</div>
             <div class="kpi-label">Conv. Cartão</div>
-            <div class="kpi-value" style="color:var(--success)">18.9%</div>
-            <div class="kpi-delta up">↑ 3.2% vs anterior</div>
+            <div class="kpi-value" style="color:var(--success)" id="kpi-card-conv">0%</div>
+            <div class="kpi-delta" style="color:var(--text-muted)">Cartão aprovado / total</div>
           </div>
           <div class="kpi-card warning">
             <div class="kpi-icon warning">🎫</div>
             <div class="kpi-label">Ticket Médio</div>
-            <div class="kpi-value" style="color:var(--warning)">R$ 247</div>
-            <div class="kpi-delta up">↑ R$ 31 este mês</div>
+            <div class="kpi-value" style="color:var(--warning)" id="kpi-ticket">R$ 0,00</div>
+            <div class="kpi-delta" style="color:var(--text-muted)">por venda aprovada</div>
           </div>
         </div>
 
@@ -1157,9 +1157,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
             <div class="card-header">
               <span class="card-title">Evolução — Vendas e Leads</span>
               <div class="seg-control">
-                <button class="seg-btn active">7d</button>
-                <button class="seg-btn">30d</button>
-                <button class="seg-btn">90d</button>
+                <button class="seg-btn active" onclick="changeDashPeriod(7,this)">7d</button>
+                <button class="seg-btn" onclick="changeDashPeriod(30,this)">30d</button>
+                <button class="seg-btn" onclick="changeDashPeriod(90,this)">90d</button>
               </div>
             </div>
             <div class="chart-container"><canvas id="chartSalesLeads"></canvas></div>
@@ -1173,42 +1173,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
         </div>
 
         <div class="section-title"><span class="dot"></span>Gateways Conectados</div>
-        <div class="grid-4" style="margin-bottom:20px;">
-          <div id="gw-tribopay" class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div style="font-weight:700;font-size:14px;">TriboPay</div>
-              <span class="badge badge-success">● Ativo</span>
-            </div>
-            <div style="font-size:24px;font-weight:800;color:var(--success)">R$ 31.440</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">482 transações</div>
-            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:62%;background:var(--success);"></div></div>
-          </div>
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div style="font-weight:700;font-size:14px;">Pushinpay</div>
-              <span class="badge badge-success">● Ativo</span>
-            </div>
-            <div style="font-size:24px;font-weight:800;color:var(--accent)">R$ 24.180</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">318 transações</div>
-            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:48%;background:var(--accent);"></div></div>
-          </div>
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div style="font-weight:700;font-size:14px;">SyncPay</div>
-              <span class="badge badge-warning">● Parcial</span>
-            </div>
-            <div style="font-size:24px;font-weight:800;color:var(--warning)">R$ 18.240</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">241 transações</div>
-            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:36%;background:var(--warning);"></div></div>
-          </div>
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-              <div style="font-weight:700;font-size:14px;">MundPay</div>
-              <span class="badge badge-muted">● Inativo</span>
-            </div>
-            <div style="font-size:24px;font-weight:800;color:var(--text-muted)">R$ 10.460</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">138 transações</div>
-            <div class="progress-bar" style="margin-top:12px;"><div class="progress-fill" style="width:21%;background:var(--text-muted);"></div></div>
+        <div class="grid-4" style="margin-bottom:20px;" id="gw-cards">
+          <div class="card" style="display:flex;align-items:center;justify-content:center;min-height:120px;color:var(--text-muted);font-size:13px;">
+            Carregando gateways...
           </div>
         </div>
 
@@ -1216,11 +1183,9 @@ textarea.form-control { resize: vertical; min-height: 80px; }
           <div class="card-header"><span class="card-title">Performance Detalhada</span></div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Método</th><th>Quantidade</th><th>Faturamento</th><th>Taxa Conv.</th><th>Ticket Médio</th><th>Crescimento</th></tr></thead>
-              <tbody>
-                <tr><td><span class="status-dot online"></span>PIX</td><td>742</td><td>R$ 182.440</td><td>31.4%</td><td>R$ 245</td><td><span class="badge badge-success">↑ 8.2%</span></td></tr>
-                <tr><td><span class="status-dot" style="background:var(--accent)"></span>Cartão</td><td>384</td><td>R$ 98.820</td><td>18.9%</td><td>R$ 257</td><td><span class="badge badge-success">↑ 12.1%</span></td></tr>
-                <tr><td><span class="status-dot warning"></span>Custos</td><td>—</td><td>R$ 24.318</td><td>—</td><td>—</td><td><span class="badge badge-danger">↑ 3.4%</span></td></tr>
+              <thead><tr><th>Método</th><th>Quantidade</th><th>Faturamento</th><th>Taxa Conv.</th><th>Ticket Médio</th></tr></thead>
+              <tbody id="perf-tbody">
+                <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">Nenhuma transação ainda</td></tr>
               </tbody>
             </table>
           </div>
@@ -1265,10 +1230,10 @@ textarea.form-control { resize: vertical; min-height: 80px; }
       <!-- ╚══════════════════╝ -->
       <div class="page" id="page-tracking">
         <div class="grid-4" style="margin-bottom:20px;">
-          <div class="kpi-card accent"><div class="kpi-icon accent">🎯</div><div class="kpi-label">Cliques Totais</div><div class="kpi-value" style="color:var(--accent)">48.291</div><div class="kpi-delta up">↑ 22.3%</div></div>
-          <div class="kpi-card success"><div class="kpi-icon success">💰</div><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:var(--success)">R$ 84.320</div><div class="kpi-delta up">↑ 18.4%</div></div>
-          <div class="kpi-card warning"><div class="kpi-icon warning">👥</div><div class="kpi-label">Leads</div><div class="kpi-value" style="color:var(--warning)">6.283</div><div class="kpi-delta up">↑ 341</div></div>
-          <div class="kpi-card danger"><div class="kpi-icon danger">🔄</div><div class="kpi-label">Taxa Conv.</div><div class="kpi-value" style="color:var(--danger)">13.0%</div><div class="kpi-delta up">↑ 1.2%</div></div>
+          <div class="kpi-card accent"><div class="kpi-icon accent">🎯</div><div class="kpi-label">Cliques Totais</div><div class="kpi-value" style="color:var(--accent)" id="trk-clicks">0</div><div class="kpi-delta" style="color:var(--text-muted)">eventos registrados</div></div>
+          <div class="kpi-card success"><div class="kpi-icon success">💰</div><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:var(--success)" id="trk-revenue">R$ 0,00</div><div class="kpi-delta" style="color:var(--text-muted)">via tracking</div></div>
+          <div class="kpi-card warning"><div class="kpi-icon warning">👥</div><div class="kpi-label">Leads</div><div class="kpi-value" style="color:var(--warning)" id="trk-leads">0</div><div class="kpi-delta" style="color:var(--text-muted)">captados</div></div>
+          <div class="kpi-card danger"><div class="kpi-icon danger">🔄</div><div class="kpi-label">Taxa Conv.</div><div class="kpi-value" style="color:var(--danger)" id="trk-conv">0%</div><div class="kpi-delta" style="color:var(--text-muted)">leads → compras</div></div>
         </div>
         <div class="grid-2" style="margin-bottom:20px;">
           <div class="card">
@@ -2703,40 +2668,198 @@ function destroyChart(id) {
   if(charts[id]) { charts[id].destroy(); delete charts[id]; }
 }
 
-function initDashboardCharts() {
+// ═══════════════════════════════════════════════
+//  DASHBOARD — dados reais do Supabase
+// ═══════════════════════════════════════════════
+function brl(v) { return 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) }
+function pct(a,b) { return b ? Math.round(a/b*100)+'%' : '0%' }
+
+async function initDashboardCharts() {
   destroyChart('salesLeads'); destroyChart('payMethods');
-  const labels = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-  const cfg = { responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}}, scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}, y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}} };
-  charts.salesLeads = new Chart(document.getElementById('chartSalesLeads'), {
-    type:'line',
-    data:{labels,datasets:[
-      {label:'Faturamento',data:[8200,9100,7800,11200,9800,13400,12100],borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,0.1)',tension:0.4,fill:true},
-      {label:'Leads',data:[420,380,510,670,580,840,720],borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,0.08)',tension:0.4,fill:true,yAxisID:'y1'}
-    ]},
-    options:{...cfg, scales:{...cfg.scales, y1:{position:'right',ticks:{color:'#555b75'},grid:{drawOnChartArea:false}}}}
-  });
+
+  if(!currentUser) { renderDashboardEmpty(); return; }
+
+  // ── Buscar transações ──────────────────────────────────────
+  const { data: txs } = await supa.from('transactions')
+    .select('amount,method,status,gateway,created_at')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+
+  // ── Buscar leads ───────────────────────────────────────────
+  const { count: leadsCount } = await supa.from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', currentUser.id)
+
+  const approved   = (txs||[]).filter(t => t.status === 'approved')
+  const totalRev   = approved.reduce((a,t) => a + Number(t.amount), 0)
+  const now        = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const monthRev   = approved.filter(t => t.created_at >= monthStart).reduce((a,t) => a + Number(t.amount), 0)
+  const pixTotal   = (txs||[]).filter(t => t.method === 'pix').length
+  const pixApproved= approved.filter(t => t.method === 'pix').length
+  const cardTotal  = (txs||[]).filter(t => t.method === 'card').length
+  const cardApproved = approved.filter(t => t.method === 'card').length
+  const avgTicket  = approved.length ? totalRev / approved.length : 0
+
+  // ── KPIs ──────────────────────────────────────────────────
+  document.getElementById('kpi-total-revenue').textContent = brl(totalRev)
+  document.getElementById('kpi-month-revenue').textContent = brl(monthRev)
+  document.getElementById('kpi-leads').textContent         = (leadsCount||0).toLocaleString('pt-BR')
+  document.getElementById('kpi-pix-conv').textContent      = pct(pixApproved, pixTotal)
+  document.getElementById('kpi-card-conv').textContent     = pct(cardApproved, cardTotal)
+  document.getElementById('kpi-ticket').textContent        = brl(avgTicket)
+
+  // ── Delta faturamento ──────────────────────────────────────
+  const deltaEl = document.getElementById('kpi-total-revenue-delta')
+  if(approved.length === 0) {
+    deltaEl.textContent = '— sem vendas ainda'
+    deltaEl.style.color = 'var(--text-muted)'
+  } else {
+    deltaEl.textContent = `${approved.length} venda(s) aprovada(s)`
+    deltaEl.className   = 'kpi-delta up'
+  }
+  document.getElementById('kpi-month-delta').textContent = monthRev > 0 ? `+${brl(monthRev)} este mês` : '— sem vendas este mês'
+  document.getElementById('kpi-leads-delta').textContent = leadsCount > 0 ? `${leadsCount} lead(s) no total` : '— nenhum lead ainda'
+
+  // ── Gateways ───────────────────────────────────────────────
+  const gwNames = ['tribopay','pushinpay','syncpay','mundpay']
+  const gwColors = ['var(--success)','var(--accent)','var(--warning)','var(--text-muted)']
+  const gwData   = gwNames.map(gw => ({
+    name: gw,
+    rev:  approved.filter(t=>t.gateway===gw).reduce((a,t)=>a+Number(t.amount),0),
+    count: approved.filter(t=>t.gateway===gw).length
+  }))
+  const maxRev = Math.max(...gwData.map(g=>g.rev), 1)
+
+  document.getElementById('gw-cards').innerHTML = gwData.map((g,i) => `
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-weight:700;font-size:14px;">${g.name.charAt(0).toUpperCase()+g.name.slice(1)}</div>
+        <span class="badge ${g.count>0?'badge-success':'badge-muted'}">${g.count>0?'● Ativo':'○ Sem dados'}</span>
+      </div>
+      <div style="font-size:24px;font-weight:800;color:${gwColors[i]}">${brl(g.rev)}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${g.count} transação(ões)</div>
+      <div class="progress-bar" style="margin-top:12px;">
+        <div class="progress-fill" style="width:${Math.round(g.rev/maxRev*100)}%;background:${gwColors[i]};"></div>
+      </div>
+    </div>`).join('')
+
+  // ── Tabela performance ─────────────────────────────────────
+  const pixRev    = approved.filter(t=>t.method==='pix').reduce((a,t)=>a+Number(t.amount),0)
+  const cardRev   = approved.filter(t=>t.method==='card').reduce((a,t)=>a+Number(t.amount),0)
+  const pixAvg    = pixApproved  ? pixRev/pixApproved   : 0
+  const cardAvg   = cardApproved ? cardRev/cardApproved : 0
+
+  document.getElementById('perf-tbody').innerHTML = approved.length === 0
+    ? `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">Nenhuma transação ainda — suas vendas aparecerão aqui</td></tr>`
+    : `
+      <tr><td><span class="status-dot online"></span>PIX</td><td>${pixApproved}</td><td>${brl(pixRev)}</td><td>${pct(pixApproved,pixTotal)}</td><td>${brl(pixAvg)}</td></tr>
+      <tr><td><span class="status-dot" style="background:var(--accent)"></span>Cartão</td><td>${cardApproved}</td><td>${brl(cardRev)}</td><td>${pct(cardApproved,cardTotal)}</td><td>${brl(cardAvg)}</td></tr>`
+
+  // ── Gráfico evolução (últimos 7 dias por padrão) ───────────
+  await renderSalesChart(7, txs||[], leadsCount||0)
+
+  // ── Gráfico métodos ────────────────────────────────────────
+  const cfg = {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}}}
   charts.payMethods = new Chart(document.getElementById('chartPayMethods'), {
     type:'doughnut',
-    data:{labels:['PIX','Cartão','Boleto'],datasets:[{data:[58,36,6],backgroundColor:['#6c63ff','#00d4aa','#ffb347'],borderWidth:0,hoverOffset:6}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#8b90a7',font:{size:11},padding:16}}}}
-  });
+    data:{
+      labels:['PIX','Cartão'],
+      datasets:[{ data:[pixRev, cardRev], backgroundColor:['#6c63ff','#00d4aa'], borderWidth:0, hoverOffset:6 }]
+    },
+    options:{...cfg}
+  })
 }
 
-function initTrackingCharts() {
+async function renderSalesChart(days, txs, leadsCount) {
+  destroyChart('salesLeads')
+  const labels = []
+  const revenueData = []
+  const leadsData   = []
+
+  // Buscar leads por dia
+  let leadsPerDay = {}
+  if(currentUser) {
+    const since = new Date(); since.setDate(since.getDate() - days)
+    const { data: leadsRows } = await supa.from('leads')
+      .select('created_at')
+      .eq('user_id', currentUser.id)
+      .gte('created_at', since.toISOString())
+    ;(leadsRows||[]).forEach(l => {
+      const d = l.created_at.split('T')[0]
+      leadsPerDay[d] = (leadsPerDay[d]||0) + 1
+    })
+  }
+
+  for(let i = days-1; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate()-i)
+    const key = d.toISOString().split('T')[0]
+    labels.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}))
+    const dayRev = (txs||[]).filter(t => t.created_at?.startsWith(key) && t.status==='approved').reduce((a,t)=>a+Number(t.amount),0)
+    revenueData.push(dayRev)
+    leadsData.push(leadsPerDay[key]||0)
+  }
+
+  const chartCfg = {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y1:{position:'right',ticks:{color:'#555b75'},grid:{drawOnChartArea:false}}}}
+  charts.salesLeads = new Chart(document.getElementById('chartSalesLeads'), {
+    type:'line',
+    data:{labels, datasets:[
+      {label:'Faturamento (R$)',data:revenueData,borderColor:'#6c63ff',backgroundColor:'rgba(108,99,255,0.1)',tension:0.4,fill:true},
+      {label:'Leads',data:leadsData,borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,0.08)',tension:0.4,fill:true,yAxisID:'y1'}
+    ]},
+    options: chartCfg
+  })
+}
+
+async function changeDashPeriod(days, btn) {
+  document.querySelectorAll('.seg-control .seg-btn').forEach(b=>b.classList.remove('active'))
+  btn.classList.add('active')
+  if(!currentUser) return
+  const { data: txs } = await supa.from('transactions').select('amount,method,status,gateway,created_at').eq('user_id',currentUser.id)
+  const { count: lc } = await supa.from('leads').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id)
+  await renderSalesChart(days, txs||[], lc||0)
+}
+
+function renderDashboardEmpty() {
+  document.getElementById('kpi-total-revenue').textContent = 'R$ 0,00'
+  document.getElementById('kpi-month-revenue').textContent = 'R$ 0,00'
+  document.getElementById('kpi-leads').textContent         = '0'
+  document.getElementById('kpi-pix-conv').textContent      = '0%'
+  document.getElementById('kpi-card-conv').textContent     = '0%'
+  document.getElementById('kpi-ticket').textContent        = 'R$ 0,00'
+  document.getElementById('gw-cards').innerHTML = ['TriboPay','Pushinpay','SyncPay','MundPay'].map(n=>`
+    <div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:8px;">${n}</div>
+    <span class="badge badge-muted">○ Sem dados</span></div>`).join('')
+  document.getElementById('perf-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">Faça login para ver seus dados reais</td></tr>`
+
+  // Gráficos vazios
+  const cfg = {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7'}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}}
+  const labels = Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})})
+  charts.salesLeads = new Chart(document.getElementById('chartSalesLeads'),{type:'line',data:{labels,datasets:[{label:'Faturamento',data:Array(7).fill(0),borderColor:'#6c63ff',tension:0.4},{label:'Leads',data:Array(7).fill(0),borderColor:'#00d4aa',tension:0.4}]},options:cfg})
+  charts.payMethods = new Chart(document.getElementById('chartPayMethods'),{type:'doughnut',data:{labels:['PIX','Cartão'],datasets:[{data:[0,0],backgroundColor:['#6c63ff','#00d4aa'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7'}}}}})
+}
+
+function initTrackingCharts(rows) {
   destroyChart('trackingRevLeads'); destroyChart('utmSources');
-  const labels=['Wk1','Wk2','Wk3','Wk4'];
   const cfg={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}};
+
+  // Últimas 4 semanas de faturamento
+  const weekLabels = ['Sem 1','Sem 2','Sem 3','Sem 4']
   charts.trackingRevLeads = new Chart(document.getElementById('chartTrackingRevLeads'),{
     type:'bar',
-    data:{labels,datasets:[
-      {label:'Faturamento',data:[18400,22100,19800,24020],backgroundColor:'rgba(108,99,255,0.7)',borderRadius:4},
-      {label:'Leads',data:[1200,1540,1380,2163],backgroundColor:'rgba(0,212,170,0.5)',borderRadius:4}
+    data:{labels:weekLabels,datasets:[
+      {label:'Faturamento',data:[0,0,0,0],backgroundColor:'rgba(108,99,255,0.7)',borderRadius:4},
+      {label:'Leads',data:[0,0,0,0],backgroundColor:'rgba(0,212,170,0.5)',borderRadius:4}
     ]},
     options:{...cfg}
   });
+
+  // Top UTM sources
+  const srcLabels = rows?.length ? rows.slice(0,5).map(([k])=>k) : ['direto']
+  const srcData   = rows?.length ? rows.slice(0,5).map(([,v])=>v.clicks) : [0]
   charts.utmSources = new Chart(document.getElementById('chartUtmSources'),{
     type:'bar',
-    data:{labels:['tiktok','instagram','facebook','google','direct'],datasets:[{label:'Leads',data:[2840,1620,980,540,303],backgroundColor:['#6c63ff','#00d4aa','#ffb347','#ff4d6a','#a78bfa'],borderRadius:4}]},
+    data:{labels:srcLabels,datasets:[{label:'Cliques',data:srcData,backgroundColor:['#6c63ff','#00d4aa','#ffb347','#ff4d6a','#a78bfa'],borderRadius:4}]},
     options:{...cfg,indexAxis:'y',plugins:{legend:{display:false}}}
   });
 }
@@ -2795,24 +2918,53 @@ function exportTransactions() { toast('CSV exportado com sucesso!'); }
 // ═══════════════════════════════════════════════
 //  TRACKING
 // ═══════════════════════════════════════════════
-function renderTracking() {
-  const data = [
-    {param:'UTM Source', value:'tiktok', clicks:14820, leads:2840, sales:381, revenue:93880, conv:'13.4%'},
-    {param:'UTM Source', value:'instagram', clicks:8210, leads:1620, sales:187, revenue:46410, conv:'11.5%'},
-    {param:'UTM Campaign', value:'black_friday', clicks:6440, leads:1280, sales:198, revenue:48900, conv:'15.5%'},
-    {param:'UTM Medium', value:'paid_social', clicks:18400, leads:3280, sales:412, revenue:101440, conv:'12.6%'},
-    {param:'SubID', value:'adset_vip', clicks:2840, leads:620, sales:94, revenue:23300, conv:'15.2%'},
-  ];
-  document.getElementById('tracking-tbody').innerHTML = data.map(r=>`
-    <tr>
-      <td style="color:var(--text-muted)">${r.param}</td>
-      <td><span class="badge badge-accent">${r.value}</span></td>
-      <td>${r.clicks.toLocaleString()}</td>
-      <td>${r.leads.toLocaleString()}</td>
-      <td>${r.sales.toLocaleString()}</td>
-      <td style="font-weight:600;color:var(--success)">R$ ${r.revenue.toLocaleString()}</td>
-      <td><span class="badge badge-success">${r.conv}</span></td>
-    </tr>`).join('');
+async function renderTracking() {
+  if(!currentUser) {
+    document.getElementById('tracking-tbody').innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">Faça login para ver seus dados de tracking</td></tr>`
+    setTimeout(initTrackingCharts, 50)
+    return
+  }
+
+  const { data: events } = await supa.from('tracking_events')
+    .select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+
+  const { count: leadsCount } = await supa.from('leads')
+    .select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
+
+  const totalRev  = (events||[]).reduce((a,e) => a + Number(e.revenue||0), 0)
+  const purchases = (events||[]).filter(e => e.event_type === 'purchase').length
+  const convRate  = leadsCount ? Math.round(purchases/leadsCount*100) : 0
+
+  document.getElementById('trk-clicks').textContent  = (events?.length||0).toLocaleString('pt-BR')
+  document.getElementById('trk-revenue').textContent = brl(totalRev)
+  document.getElementById('trk-leads').textContent   = (leadsCount||0).toLocaleString('pt-BR')
+  document.getElementById('trk-conv').textContent    = convRate + '%'
+
+  // Agrupar por UTM source
+  const grouped = {}
+  ;(events||[]).forEach(e => {
+    const key = e.utm_source || 'direto'
+    if(!grouped[key]) grouped[key] = { clicks:0, leads:0, sales:0, revenue:0 }
+    grouped[key].clicks++
+    if(e.event_type === 'purchase') { grouped[key].sales++; grouped[key].revenue += Number(e.revenue||0) }
+  })
+
+  const rows = Object.entries(grouped).sort((a,b) => b[1].revenue - a[1].revenue)
+
+  document.getElementById('tracking-tbody').innerHTML = rows.length
+    ? rows.map(([src, d]) => `
+        <tr>
+          <td style="color:var(--text-muted)">UTM Source</td>
+          <td><span class="badge badge-accent">${src}</span></td>
+          <td>${d.clicks.toLocaleString()}</td>
+          <td>—</td>
+          <td>${d.sales}</td>
+          <td style="font-weight:600;color:var(--success)">${brl(d.revenue)}</td>
+          <td><span class="badge badge-success">${d.clicks ? Math.round(d.sales/d.clicks*100) : 0}%</span></td>
+        </tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">Nenhum evento de tracking ainda</td></tr>`
+
+  setTimeout(() => initTrackingCharts(rows), 50)
 }
 
 // ═══════════════════════════════════════════════
