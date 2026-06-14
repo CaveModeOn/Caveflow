@@ -2176,8 +2176,19 @@ async function doLogin() {
   const email = document.getElementById('auth-email').value.trim();
   const pass  = document.getElementById('auth-pass').value;
   if(!email||!pass){ showAuthError('Preencha e-mail e senha.'); return; }
+
   const { data, error } = await supa.auth.signInWithPassword({ email, password: pass });
-  if(error){ showAuthError(error.message); return; }
+  if(error) {
+    if(error.message.includes('Email not confirmed'))
+      return showAuthError('⚠️ Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.');
+    if(error.message.includes('Invalid login credentials'))
+      return showAuthError('E-mail ou senha incorretos.');
+    return showAuthError(error.message);
+  }
+  if(!data.user.email_confirmed_at) {
+    await supa.auth.signOut();
+    return showAuthError('⚠️ Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.');
+  }
   onLogin(data.user);
 }
 
@@ -2187,16 +2198,39 @@ async function doRegister() {
   const pass  = document.getElementById('auth-pass2').value;
   if(!name||!email||!pass){ showAuthError('Preencha todos os campos.'); return; }
   if(pass.length < 8){ showAuthError('Senha deve ter no mínimo 8 caracteres.'); return; }
+
   const { data, error } = await supa.auth.signUp({ email, password: pass, options: { data: { name } } });
-  if(error){ showAuthError(error.message); return; }
-  toast('✅ Conta criada! Verifique seu e-mail.');
-  document.getElementById('auth-modal').classList.remove('open');
+  if(error) {
+    if(error.message.includes('already registered'))
+      return showAuthError('Este e-mail já está cadastrado. Tente fazer login.');
+    return showAuthError(error.message);
+  }
+
+  // Mostrar tela de confirmação — NÃO logar ainda
+  const modal = document.querySelector('#auth-modal .modal');
+  modal.innerHTML = `
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:48px;margin-bottom:16px;">📧</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:10px;">Confirme seu e-mail</div>
+      <div style="font-size:13px;color:var(--text-muted);line-height:1.6;margin-bottom:24px;">
+        Enviamos um link de confirmação para<br>
+        <strong style="color:var(--text-primary);">${email}</strong><br><br>
+        Clique no link do e-mail e depois volte aqui para entrar.
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="location.reload()">
+        ✅ Já confirmei — Fazer Login
+      </button>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-muted);">
+        Não recebeu? Verifique a pasta de spam.
+      </div>
+    </div>`;
 }
 
 function showAuthError(msg) {
   const el = document.getElementById('auth-error');
+  if(!el) return;
   el.textContent = msg; el.style.display = 'block';
-  setTimeout(() => el.style.display='none', 4000);
+  setTimeout(() => el.style.display='none', 5000);
 }
 
 function continueOffline() {
@@ -2213,14 +2247,18 @@ async function doLogout() {
 }
 
 async function onLogin(user) {
+  if(!user.email_confirmed_at) {
+    await supa.auth.signOut();
+    showAuthModal();
+    setTimeout(() => showAuthError('⚠️ Confirme seu e-mail antes de entrar.'), 400);
+    return;
+  }
   currentUser = user;
   document.getElementById('auth-modal')?.classList.remove('open');
-  // Carregar profile
   const { data } = await supa.from('profiles').select('*').eq('id', user.id).single();
   currentProfile = data;
   updateUserUI(data || { name: user.email, plan: 'Pro' });
   toast('✅ Bem-vindo! Dados sincronizados com a nuvem.');
-  // Re-render página atual
   onPageLoad(currentPage);
 }
 
@@ -3969,15 +4007,28 @@ if(window.innerWidth < 700) document.getElementById('sidebar').classList.add('co
 // ─── SUPABASE BOOT ───
 (async () => {
   const { data: { session } } = await supa.auth.getSession();
+
   if(session?.user) {
-    await onLogin(session.user);
-    subscribeRealtime();
+    if(!session.user.email_confirmed_at) {
+      // Sessão de user não confirmado — deslogar
+      await supa.auth.signOut();
+      onPageLoad('dashboard');
+      setTimeout(() => {
+        showAuthModal();
+        setTimeout(() => showAuthError('⚠️ Confirme seu e-mail antes de entrar.'), 500);
+      }, 900);
+    } else {
+      await onLogin(session.user);
+      subscribeRealtime();
+    }
   } else {
     setTimeout(showAuthModal, 900);
     onPageLoad('dashboard');
   }
+
   supa.auth.onAuthStateChange(async (event, session) => {
     if(event === 'SIGNED_IN' && session?.user) {
+      if(!session.user.email_confirmed_at) { await supa.auth.signOut(); return; }
       await onLogin(session.user);
       subscribeRealtime();
     } else if(event === 'SIGNED_OUT') {
