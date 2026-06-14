@@ -1198,10 +1198,10 @@ textarea.form-control { resize: vertical; min-height: 80px; }
       <!-- ╚══════════════════════╝ -->
       <div class="page" id="page-transactions">
         <div class="grid-4" style="margin-bottom:20px;">
-          <div class="kpi-card accent"><div class="kpi-icon accent">💰</div><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:var(--accent)">R$ 84.320</div><div class="kpi-delta up">↑ 18.4%</div></div>
-          <div class="kpi-card success"><div class="kpi-icon success">⚡</div><div class="kpi-label">PIX</div><div class="kpi-value" style="color:var(--success)">742</div><div class="kpi-delta up">↑ 8.2%</div></div>
-          <div class="kpi-card warning"><div class="kpi-icon warning">💳</div><div class="kpi-label">Cartão</div><div class="kpi-value" style="color:var(--warning)">384</div><div class="kpi-delta up">↑ 12.1%</div></div>
-          <div class="kpi-card accent"><div class="kpi-icon accent">🎫</div><div class="kpi-label">Ticket Médio</div><div class="kpi-value" style="color:var(--accent)">R$ 247</div><div class="kpi-delta up">↑ R$ 31</div></div>
+          <div class="kpi-card accent"><div class="kpi-icon accent">💰</div><div class="kpi-label">Faturamento</div><div class="kpi-value" style="color:var(--accent)" id="kpi-tx-revenue">R$ 0,00</div><div class="kpi-delta" style="color:var(--text-muted)">vendas aprovadas</div></div>
+          <div class="kpi-card success"><div class="kpi-icon success">⚡</div><div class="kpi-label">PIX</div><div class="kpi-value" style="color:var(--success)" id="tx-kpi-pix">0</div><div class="kpi-delta" style="color:var(--text-muted)">aprovados</div></div>
+          <div class="kpi-card warning"><div class="kpi-icon warning">💳</div><div class="kpi-label">Cartão</div><div class="kpi-value" style="color:var(--warning)" id="tx-kpi-card">0</div><div class="kpi-delta" style="color:var(--text-muted)">aprovados</div></div>
+          <div class="kpi-card accent"><div class="kpi-icon accent">🎫</div><div class="kpi-label">Ticket Médio</div><div class="kpi-value" style="color:var(--accent)" id="kpi-tx-ticket">R$ 0,00</div><div class="kpi-delta" style="color:var(--text-muted)">por venda</div></div>
         </div>
         <div class="card">
           <div class="filter-bar">
@@ -1386,7 +1386,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
                 <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:12px;display:flex;align-items:center;justify-content:space-between;">
                   <div>
                     <div style="font-size:12px;color:var(--text-muted);">Destinatários estimados</div>
-                    <div style="font-size:22px;font-weight:800;color:var(--accent);" id="disp-audience-count">6.283</div>
+                    <div style="font-size:22px;font-weight:800;color:var(--accent);" id="disp-audience-count">0</div>
                   </div>
                   <div style="text-align:right;">
                     <div style="font-size:12px;color:var(--text-muted);">Tempo estimado</div>
@@ -1503,7 +1503,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
                 <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;">
                   <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:var(--bg-elevated);border-radius:6px;">
                     <span style="color:var(--text-muted);">Destinatários</span>
-                    <span style="font-weight:700;color:var(--accent);" id="prev-audience">6.283</span>
+                    <span style="font-weight:700;color:var(--accent);" id="prev-audience">0</span>
                   </div>
                   <div style="display:flex;justify-content:space-between;font-size:12px;padding:8px;background:var(--bg-elevated);border-radius:6px;">
                     <span style="color:var(--text-muted);">Tipo</span>
@@ -2412,19 +2412,38 @@ async function deleteFlowDB(id) {
 //  SUPABASE CRUD — TRANSAÇÕES
 // ═══════════════════════════════════════════════
 async function renderTransactionsFromDB() {
-  const txs = await DB.select('transactions');
-  if(txs.length) {
-    // map to local format
-    const mapped = txs.map(t => ({
-      id: t.id, name: t.gateway_tx_id||'—', gateway: t.gateway,
-      method: t.method==='pix'?'PIX':'Cartão',
-      value: Number(t.amount), status: capitalizeStatus(t.status),
-      date: t.created_at?.split('T')[0]
-    }));
-    renderTransactions(mapped);
-  } else {
-    renderTransactions(DB._get('transactions') || []);
-  }
+  if(!currentUser) { renderTransactions([]); return; }
+  const { data: txs } = await supa.from('transactions')
+    .select('*').eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const rows = (txs||[]).map(t => ({
+    id: t.id,
+    name: t.product_name || t.gateway_tx_id || '—',
+    gateway: t.gateway,
+    method: t.method === 'pix' ? 'PIX' : 'Cartão',
+    value: Number(t.amount),
+    status: capitalizeStatus(t.status),
+    date: t.created_at?.split('T')[0]
+  }));
+
+  // KPIs reais
+  const approved  = (txs||[]).filter(t => t.status === 'approved');
+  const totalRev  = approved.reduce((a,t) => a + Number(t.amount), 0);
+  const pixCount  = approved.filter(t => t.method === 'pix').length;
+  const cardCount = approved.filter(t => t.method === 'card').length;
+  const avgTicket = approved.length ? totalRev / approved.length : 0;
+
+  const kpiRev = document.getElementById('kpi-tx-revenue');
+  const kpiPix = document.getElementById('tx-kpi-pix');
+  const kpiCard= document.getElementById('tx-kpi-card');
+  const kpiTkt = document.getElementById('kpi-tx-ticket');
+  if(kpiRev)  kpiRev.textContent  = brl(totalRev);
+  if(kpiPix)  kpiPix.textContent  = pixCount;
+  if(kpiCard) kpiCard.textContent = cardCount;
+  if(kpiTkt)  kpiTkt.textContent  = brl(avgTicket);
+
+  renderTransactions(rows);
 }
 
 function capitalizeStatus(s) {
@@ -2625,11 +2644,7 @@ if(!DB._get('transactions')){
   }
   DB._set('transactions', txs);
 }
-if(!DB._get('redirects')) DB._set('redirects',[{id:1,slug:'bf24',url:'https://pay.example.com/bf',clicks:1284,ab:true,tracking:true,active:true},{id:2,slug:'vip',url:'https://pay.example.com/vip',clicks:847,ab:false,tracking:true,active:true}]);
-if(!DB._get('abtests')) DB._set('abtests',[{id:1,name:'Headline Oferta Principal',a:{url:'https://lp.com/v1',pct:50,clicks:2841,conv:312,rev:76880},b:{url:'https://lp.com/v2',pct:50,clicks:2918,conv:348,rev:85260},status:'active',winner:'B'},{id:2,name:'Preço Upsell',a:{url:'R$ 197',pct:50,clicks:1200,conv:89,rev:17533},b:{url:'R$ 147',pct:50,clicks:1200,conv:127,rev:18669},status:'active',winner:'B'}]);
-if(!DB._get('campaigns')) DB._set('campaigns',[{id:1,name:'Reativação Inativos',type:'Sequência',bot:'Bot Vendas Principal',seg:'Não compradores',status:'active',sent:3840,opens:1920,conv:192},{id:2,name:'PIX Pendente — Urgência',type:'Agendado',bot:'Bot Vendas Principal',seg:'PIX pendente',status:'paused',sent:847,opens:623,conv:81}]);
-if(!DB._get('funils')) DB._set('funils',[{id:1,name:'Vitrine Black Friday',bot:'Bot Vendas Principal',items:8,emoji:'🛒',status:'active'},{id:2,name:'Catálogo Digital',bot:'Bot Suporte VIP',items:12,emoji:'📦',status:'active'},{id:3,name:'Funil VIP',bot:'Bot Vendas Principal',items:3,emoji:'👑',status:'paused'}]);
-if(!DB._get('tiktok_contas')) DB._set('tiktok_contas',[{id:1,name:'TikTok Ads BR',pixel:'C8XXXXXXX01',status:'connected',events:12840,revenue:28400}]);
+// Seeds removidos — dados vêm do Supabase
 
 // ═══════════════════════════════════════════════
 //  NAVIGATION
@@ -3245,20 +3260,8 @@ document.addEventListener('mouseup', () => {
 // ═══════════════════════════════════════════════
 
 // ── Seed histórico ──
-if(!DB.get('camp_history')){
-  DB.set('camp_history',[
-    {id:1,name:'Reativação Inativos',type:'Sequência',sent:3840,opened:1920,clicked:840,conv:192,revenue:37440,date:'2025-06-10',status:'done'},
-    {id:2,name:'PIX Pendente — Urgência',type:'Agendado',sent:847,opened:623,clicked:284,conv:81,revenue:15777,date:'2025-06-08',status:'done'},
-    {id:3,name:'Black Friday',type:'Imediato',sent:6283,opened:3840,clicked:1920,conv:481,revenue:118406,date:'2025-06-05',status:'done'},
-    {id:4,name:'Upsell VIP',type:'Imediato',sent:481,opened:412,clicked:198,conv:64,revenue:18688,date:'2025-06-02',status:'done'}
-  ]);
-}
-if(!DB.get('sequences')){
-  DB.set('sequences',[
-    {id:1,name:'Boas-vindas + Oferta',bot:'Bot Vendas Principal',trigger:'Primeiro contato',steps:4,leads:1284,active:true},
-    {id:2,name:'Recuperação de PIX',bot:'Bot Vendas Principal',trigger:'PIX pendente',steps:3,leads:312,active:true}
-  ]);
-}
+// histórico de campanhas vem do Supabase
+// sequências vêm do Supabase
 
 let dispType = 'imediato';
 let dispButtons = [];
@@ -3283,8 +3286,24 @@ function switchCampTab(el, panelId) {
   }
 }
 
-function renderCampaigns() {
-  const camps = DB.get('campaigns') || [];
+async function renderCampaigns() {
+  let camps = [];
+  if(currentUser) {
+    const { data } = await supa.from('campaigns')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    camps = (data||[]).map(c => ({
+      id: c.id, name: c.name,
+      type: c.type === 'immediate' ? 'Imediato' : c.type === 'scheduled' ? 'Agendado' : 'Sequência',
+      bot: 'Bot', seg: c.segment || 'todos',
+      status: c.status, sent: c.sent_count||0,
+      opens: c.open_count||0, conv: c.conv_count||0
+    }));
+    // sync local para funções legadas
+    DB._set('campaigns', camps);
+  } else {
+    camps = DB._get('campaigns') || [];
+  }
   updateCampKPIs(camps);
   const cont = document.getElementById('campaigns-list');
   const icons = {Sequência:'🔁', Agendado:'📅', Imediato:'⚡'};
@@ -3389,23 +3408,36 @@ function selectContentType(el) {
   document.getElementById('disp-media-url').placeholder = ct === 'imagem' ? 'https://i.imgur.com/...' : ct === 'video' ? 'https://... .mp4' : ct === 'audio' ? 'https://... .ogg' : 'https://... .pdf';
 }
 
-function updateAudienceCount() {
-  const seg = document.getElementById('disp-seg').value;
-  const count = audienceCounts[seg] || 0;
-  const eta = Math.ceil(count * 3 / 60);
-  document.getElementById('disp-audience-count').textContent = count.toLocaleString();
-  document.getElementById('disp-eta').textContent = `~${eta} min`;
-  document.getElementById('prev-audience').textContent = count.toLocaleString();
-  document.getElementById('prev-eta').textContent = `~${eta} min`;
-
-  // show extra filter for tag/bot
+async function updateAudienceCount() {
+  const seg   = document.getElementById('disp-seg').value;
   const extra = document.getElementById('disp-seg-extra');
   const label = document.getElementById('disp-seg-extra-label');
-  if(seg === 'tag') { extra.style.display='block'; label.textContent='Nome da Tag'; document.getElementById('disp-seg-extra-val').placeholder='Ex: COMPROU'; }
-  else if(seg === 'bot') { extra.style.display='block'; label.textContent='Bot'; document.getElementById('disp-seg-extra-val').placeholder='Nome do bot'; }
-  else if(seg === 'pais') { extra.style.display='block'; label.textContent='País (código)'; document.getElementById('disp-seg-extra-val').placeholder='BR, PT, US...'; }
-  else if(seg === 'idioma') { extra.style.display='block'; label.textContent='Idioma'; document.getElementById('disp-seg-extra-val').placeholder='pt, en, es...'; }
+
+  // Mostrar filtros extras
+  if(seg === 'tag')    { extra.style.display='block'; label.textContent='Nome da Tag';  document.getElementById('disp-seg-extra-val').placeholder='Ex: COMPROU'; }
+  else if(seg === 'bot')    { extra.style.display='block'; label.textContent='Bot';          document.getElementById('disp-seg-extra-val').placeholder='Nome do bot'; }
+  else if(seg === 'pais')   { extra.style.display='block'; label.textContent='País (código)'; document.getElementById('disp-seg-extra-val').placeholder='BR, PT, US...'; }
+  else if(seg === 'idioma') { extra.style.display='block'; label.textContent='Idioma';        document.getElementById('disp-seg-extra-val').placeholder='pt, en, es...'; }
   else extra.style.display='none';
+
+  // Contar leads reais no Supabase
+  let count = 0;
+  if(currentUser) {
+    let q = supa.from('leads').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+    if(seg === 'compradores')     q = q.contains('tags', ['COMPROU']);
+    if(seg === 'nao_compradores') q = q.not('tags', 'cs', '{"COMPROU"}');
+    if(seg === 'pix_pendente')    q = q.contains('tags', ['PIX_PENDENTE']);
+    if(seg === 'pix_pago')        q = q.contains('tags', ['PIX_PAGO']);
+    const { count: c } = await q;
+    count = c || 0;
+  }
+
+  const eta = count > 0 ? Math.ceil(count * 3 / 60) : 0;
+  const etaText = eta > 0 ? `~${eta} min` : '—';
+  document.getElementById('disp-audience-count').textContent = count.toLocaleString('pt-BR');
+  document.getElementById('disp-eta').textContent            = etaText;
+  document.getElementById('prev-audience').textContent       = count.toLocaleString('pt-BR');
+  document.getElementById('prev-eta').textContent            = etaText;
 }
 
 function updatePreview() {
@@ -3555,8 +3587,21 @@ function cancelDisparo() {
 // ── Sequências ──
 let seqStepsList = [];
 
-function renderSeqList() {
-  const seqs = DB.get('sequences') || [];
+async function renderSeqList() {
+  let seqs = [];
+  if(currentUser) {
+    const { data } = await supa.from('sequences')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    seqs = (data||[]).map(s => ({
+      id: s.id, name: s.name, bot: 'Bot',
+      trigger: s.trigger, steps: Array.isArray(s.steps)?s.steps.length:0,
+      leads: s.leads_count||0, active: s.active
+    }));
+    DB._set('sequences', seqs);
+  } else {
+    seqs = DB._get('sequences') || [];
+  }
   document.getElementById('seq-list').innerHTML = seqs.length ? seqs.map(s => `
     <div class="seq-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -3654,8 +3699,21 @@ function initCampCharts() {
 // ═══════════════════════════════════════════════
 //  FUNIL VITRINE
 // ═══════════════════════════════════════════════
-function renderFunil() {
-  const funils = DB.get('funils')||[];
+async function renderFunil() {
+  let funils = [];
+  if(currentUser) {
+    const { data } = await supa.from('funnels')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    funils = (data||[]).map(f => ({
+      id: f.id, name: f.name, bot: 'Bot',
+      items: Array.isArray(f.items) ? f.items.length : 0,
+      emoji: f.emoji||'🛒', status: f.status
+    }));
+    DB._set('funils', funils);
+  } else {
+    funils = DB._get('funils') || [];
+  }
   document.getElementById('funil-grid').innerHTML = funils.length ? funils.map(f=>`
     <div class="funnel-card">
       <div class="funnel-thumb">${f.emoji||'🛒'}</div>
@@ -3689,8 +3747,21 @@ function saveFunil() {
 // ═══════════════════════════════════════════════
 //  A/B TESTS
 // ═══════════════════════════════════════════════
-function renderABTests() {
-  const tests = DB.get('abtests')||[];
+async function renderABTests() {
+  let tests = [];
+  if(currentUser) {
+    const { data } = await supa.from('ab_tests')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    tests = (data||[]).map(t => ({
+      id: t.id, name: t.name, status: t.status, winner: t.winner,
+      a: t.variant_a || {url:'Variante A', pct:50, clicks:0, conv:0, rev:0},
+      b: t.variant_b || {url:'Variante B', pct:50, clicks:0, conv:0, rev:0}
+    }));
+    DB._set('abtests', tests);
+  } else {
+    tests = DB._get('abtests') || [];
+  }
   const cont = document.getElementById('abtests-list');
   cont.innerHTML = tests.length ? `<div style="display:flex;flex-direction:column;gap:16px;">` + tests.map(t=>`
     <div class="card">
@@ -3745,8 +3816,21 @@ function saveABTest() {
 // ═══════════════════════════════════════════════
 //  REDIRECTS
 // ═══════════════════════════════════════════════
-function renderRedirects() {
-  const rds = DB.get('redirects')||[];
+async function renderRedirects() {
+  let rds = [];
+  if(currentUser) {
+    const { data } = await supa.from('redirects')
+      .select('*').eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+    rds = (data||[]).map(r => ({
+      id: r.id, slug: r.slug, url: r.target_url,
+      clicks: r.clicks||0, ab: r.ab_enabled,
+      tracking: r.tracking, active: r.active
+    }));
+    DB._set('redirects', rds);
+  } else {
+    rds = DB._get('redirects') || [];
+  }
   document.getElementById('redirects-list').innerHTML = rds.length ? rds.map(r=>`
     <div class="redirect-card">
       <div style="width:36px;height:36px;background:var(--accent-glow);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🔗</div>
@@ -3781,75 +3865,143 @@ function saveRedirect() {
 // ═══════════════════════════════════════════════
 //  CHAT
 // ═══════════════════════════════════════════════
-const chatData = [
-  {id:1, name:'Maria Santos', preview:'Oi, quero saber mais!', time:'14:32', avatar:'MS', online:true, tgid:'@maria_s', bot:'Bot Vendas', utm:'tiktok', gw:'TriboPay', pix:'R$ 197 (pago)', status:'Comprador', tags:['COMPROU','VIP']},
-  {id:2, name:'Carlos Pereira', preview:'Não recebi o acesso...', time:'13:18', avatar:'CP', online:true, tgid:'@carlosP', bot:'Bot Vendas', utm:'instagram', gw:'Pushinpay', pix:'Pendente', status:'PIX Pendente', tags:['PIX_PENDENTE']},
-  {id:3, name:'Juliana Melo', preview:'Obrigada! 😊', time:'12:44', avatar:'JM', online:false, tgid:'@jmelo', bot:'Bot Suporte', utm:'facebook', gw:'SyncPay', pix:'R$ 97 (pago)', status:'Comprador', tags:['COMPROU']},
-  {id:4, name:'Roberto Dias', preview:'Quando sai o próximo?', time:'11:00', avatar:'RD', online:true, tgid:'@rbd', bot:'Bot Vendas', utm:'google', gw:'TriboPay', pix:'—', status:'Lead', tags:['TIKTOK']},
-];
+// chat — dados vêm do Supabase em tempo real
 let activeChatId = null;
-const chatMessages = {
-  1:[{dir:'in',text:'Oi, quero saber mais sobre o produto!'},{dir:'out',text:'Olá Maria! 👋 Que bom que você se interessou. Posso te ajudar com qualquer dúvida.'},{dir:'in',text:'Qual o prazo de entrega?'}],
-  2:[{dir:'in',text:'Não recebi o acesso ainda...'},{dir:'out',text:'Carlos, vou verificar agora mesmo para você!'}],
-  3:[{dir:'in',text:'Obrigada pela ajuda!'},{dir:'out',text:'Fico feliz em ajudar, Juliana! 😊'}],
-  4:[{dir:'in',text:'Quando sai o próximo módulo?'},{dir:'out',text:'Roberto, o módulo 3 sai na próxima semana!'}]
-};
 
-function renderChatList() {
-  document.getElementById('chat-list-items').innerHTML = chatData.map(c=>`
-    <div class="chat-item ${activeChatId===c.id?'active':''}" onclick="openChat(${c.id})">
-      <div class="avatar" style="font-size:11px;">${c.avatar}</div>
+async function renderChatList() {
+  if(!currentUser) {
+    document.getElementById('chat-list-items').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Faça login para ver as conversas</div>';
+    return;
+  }
+  const { data: leads } = await supa.from('leads')
+    .select('id,first_name,last_name,username,telegram_id,updated_at')
+    .eq('user_id', currentUser.id)
+    .order('updated_at', { ascending: false })
+    .limit(50);
+
+  if(!leads?.length) {
+    document.getElementById('chat-list-items').innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Nenhuma conversa ainda.<br>Aguardando mensagens do Telegram.</div>';
+    document.getElementById('online-count').textContent = '0 online';
+    return;
+  }
+
+  document.getElementById('online-count').textContent = leads.length + ' lead(s)';
+  document.getElementById('chat-list-items').innerHTML = leads.map(l => {
+    const name = [l.first_name, l.last_name].filter(Boolean).join(' ') || l.username || 'Lead';
+    const initials = name.split(' ').slice(0,2).map(n=>n[0]).join('').toUpperCase();
+    const time = l.updated_at ? new Date(l.updated_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="chat-item ${activeChatId===l.id?'active':''}" onclick="openChatLead('${l.id}','${name}','${initials}','${l.telegram_id}')">
+      <div class="avatar" style="font-size:11px;">${initials}</div>
       <div class="chat-item-info">
-        <div style="display:flex;align-items:center;gap:6px;">
-          <div class="chat-item-name">${c.name}</div>
-          ${c.online?'<span class="status-dot online" style="margin:0;"></span>':''}
-        </div>
-        <div class="chat-item-preview">${c.preview}</div>
+        <div class="chat-item-name">${name}</div>
+        <div class="chat-item-preview">@${l.username||'—'}</div>
       </div>
-      <div class="chat-item-time">${c.time}</div>
-    </div>`).join('');
+      <div class="chat-item-time">${time}</div>
+    </div>`;
+  }).join('');
 }
-function openChat(id) {
-  activeChatId = id;
-  const c = chatData.find(x=>x.id===id);
-  document.getElementById('chat-active-name').textContent = c.name;
-  document.getElementById('chat-active-status').textContent = c.online ? '● Online agora' : '○ Offline';
-  document.getElementById('chat-active-avatar').textContent = c.avatar;
-  document.getElementById('lead-id').textContent = c.tgid;
-  document.getElementById('lead-bot').textContent = c.bot;
-  document.getElementById('lead-utm').textContent = c.utm;
-  document.getElementById('lead-gw').textContent = c.gw;
-  document.getElementById('lead-pix').textContent = c.pix;
-  document.getElementById('lead-status').textContent = c.status;
-  document.getElementById('lead-tags').innerHTML = c.tags.map(t=>`<span class="badge badge-accent">${t}</span>`).join('');
-  const msgs = chatMessages[id] || [];
-  document.getElementById('chat-messages').innerHTML = msgs.map(m=>`
-    <div>
-      <div class="msg msg-${m.dir}">${m.text}</div>
-      <div class="msg-time" style="text-align:${m.dir==='out'?'right':'left'};color:var(--text-muted);">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
-    </div>`).join('');
+
+async function openChatLead(leadId, name, initials, telegramId) {
+  activeChatId = leadId;
+  document.getElementById('chat-active-name').textContent = name;
+  document.getElementById('chat-active-status').textContent = 'Telegram ID: ' + telegramId;
+  document.getElementById('chat-active-avatar').textContent = initials;
+  document.getElementById('lead-id').textContent = telegramId;
+
+  // Buscar info do lead
+  const { data: lead } = await supa.from('leads').select('*').eq('id', leadId).single();
+  if(lead) {
+    document.getElementById('lead-bot').textContent    = '—';
+    document.getElementById('lead-utm').textContent    = lead.utm_source || '—';
+    document.getElementById('lead-gw').textContent     = '—';
+    document.getElementById('lead-pix').textContent    = '—';
+    document.getElementById('lead-status').textContent = lead.status || 'lead';
+    document.getElementById('lead-tags').innerHTML     = (lead.tags||[]).map(t=>`<span class="badge badge-accent">${t}</span>`).join('');
+  }
+
+  // Buscar mensagens
+  const { data: msgs } = await supa.from('messages')
+    .select('*').eq('lead_id', leadId)
+    .order('created_at', { ascending: true }).limit(100);
+
+  document.getElementById('chat-messages').innerHTML = (msgs||[]).length
+    ? (msgs||[]).map(m => `
+        <div>
+          <div class="msg msg-${m.direction==='out'?'out':'in'}">${m.content||''}</div>
+          <div class="msg-time" style="text-align:${m.direction==='out'?'right':'left'};color:var(--text-muted);">
+            ${new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+          </div>
+        </div>`).join('')
+    : '<div style="text-align:center;color:var(--text-muted);padding:40px;font-size:13px;">Nenhuma mensagem ainda</div>';
+
+  setTimeout(() => { const cm=document.getElementById('chat-messages'); cm.scrollTop=cm.scrollHeight; }, 50);
   renderChatList();
-  setTimeout(()=>{ const cm=document.getElementById('chat-messages'); cm.scrollTop=cm.scrollHeight; },50);
 }
-function sendChatMsg() {
+// openChat substituído por openChatLead (dados reais)
+async function sendChatMsg() {
   const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if(!text||!activeChatId) return;
-  if(!chatMessages[activeChatId]) chatMessages[activeChatId]=[];
-  chatMessages[activeChatId].push({dir:'out',text});
-  input.value=''; openChat(activeChatId);
+  const text  = input.value.trim();
+  if(!text || !activeChatId) return;
+  input.value = '';
+
+  // Buscar telegram_id do lead
+  const { data: lead } = await supa.from('leads').select('telegram_id,bot_id').eq('id', activeChatId).single();
+  if(!lead?.telegram_id) { toast('Lead sem Telegram ID', 'error'); return; }
+
+  // Buscar token do bot
+  let botToken = null;
+  if(lead.bot_id) {
+    const { data: bot } = await supa.from('bots').select('token').eq('id', lead.bot_id).single();
+    botToken = bot?.token;
+  }
+  if(!botToken) {
+    // Fallback: primeiro bot ativo
+    const { data: bots } = await supa.from('bots').select('token').eq('user_id', currentUser.id).eq('active', true).limit(1);
+    botToken = bots?.[0]?.token;
+  }
+  if(!botToken) { toast('Nenhum bot ativo para enviar', 'error'); return; }
+
+  try {
+    const SERVER = 'https://unique-joy-production-c535.up.railway.app';
+    await fetch(`${SERVER}/api/chat/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ botToken, telegramId: lead.telegram_id, text })
+    });
+    toast('Mensagem enviada!');
+    await openChatLead(activeChatId,
+      document.getElementById('chat-active-name').textContent,
+      document.getElementById('chat-active-avatar').textContent,
+      lead.telegram_id
+    );
+  } catch(e) { toast('Erro ao enviar: ' + e.message, 'error'); }
 }
 document.getElementById('chat-input').addEventListener('keypress', e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChatMsg(); } });
 
 // ═══════════════════════════════════════════════
 //  INTEGRATIONS
 // ═══════════════════════════════════════════════
-function renderIntegrations() {
+async function renderIntegrations() {
+  // Buscar totais reais por gateway
+  let gwStats = {};
+  if(currentUser) {
+    const { data: txs } = await supa.from('transactions')
+      .select('gateway,amount,status').eq('user_id', currentUser.id);
+    ['tribopay','pushinpay','syncpay','mundpay'].forEach(gw => {
+      const gwTxs = (txs||[]).filter(t => t.gateway === gw);
+      const appr  = gwTxs.filter(t => t.status === 'approved');
+      gwStats[gw] = {
+        rev:  appr.reduce((a,t) => a+Number(t.amount), 0),
+        txs:  appr.length,
+        conv: gwTxs.length ? Math.round(appr.length/gwTxs.length*100) : 0
+      };
+    });
+  }
   const gws = [
-    {name:'TriboPay', color:'#00d4aa', bg:'rgba(0,212,170,0.1)', status:'connected', conv:31.4, rev:31440, txs:482},
-    {name:'Pushinpay', color:'#6c63ff', bg:'rgba(108,99,255,0.1)', status:'connected', conv:28.1, rev:24180, txs:318},
-    {name:'SyncPay', color:'#ffb347', bg:'rgba(255,179,71,0.1)', status:'partial', conv:22.4, rev:18240, txs:241},
-    {name:'MundPay', color:'#8b90a7', bg:'rgba(139,144,167,0.1)', status:'disconnected', conv:0, rev:10460, txs:138}
+    {name:'TriboPay',  color:'#00d4aa', bg:'rgba(0,212,170,0.1)',   status: gwStats['tribopay']?.txs  > 0 ? 'connected' : 'disconnected', conv: gwStats['tribopay']?.conv||0,  rev: gwStats['tribopay']?.rev||0,  txs: gwStats['tribopay']?.txs||0},
+    {name:'Pushinpay', color:'#6c63ff', bg:'rgba(108,99,255,0.1)',  status: gwStats['pushinpay']?.txs > 0 ? 'connected' : 'disconnected', conv: gwStats['pushinpay']?.conv||0, rev: gwStats['pushinpay']?.rev||0, txs: gwStats['pushinpay']?.txs||0},
+    {name:'SyncPay',   color:'#ffb347', bg:'rgba(255,179,71,0.1)',  status: gwStats['syncpay']?.txs   > 0 ? 'connected' : 'disconnected', conv: gwStats['syncpay']?.conv||0,   rev: gwStats['syncpay']?.rev||0,   txs: gwStats['syncpay']?.txs||0},
+    {name:'MundPay',   color:'#8b90a7', bg:'rgba(139,144,167,0.1)',status: gwStats['mundpay']?.txs   > 0 ? 'connected' : 'disconnected', conv: gwStats['mundpay']?.conv||0,   rev: gwStats['mundpay']?.rev||0,   txs: gwStats['mundpay']?.txs||0}
   ];
   const stMap = {connected:'badge-success', partial:'badge-warning', disconnected:'badge-muted'};
   const stLabel = {connected:'● Conectado', partial:'● Parcial', disconnected:'○ Desconectado'};
@@ -3866,7 +4018,7 @@ function renderIntegrations() {
         <span class="badge ${stMap[g.status]}">${stLabel[g.status]}</span>
       </div>
       <div class="integration-stats">
-        <div class="istat"><div class="istat-label">Receita</div><div class="istat-value" style="color:${g.color};">R$ ${g.rev.toLocaleString()}</div></div>
+        <div class="istat"><div class="istat-label">Receita</div><div class="istat-value" style="color:${g.color};">${brl(g.rev)}</div></div>
         <div class="istat"><div class="istat-label">Transações</div><div class="istat-value">${g.txs}</div></div>
         <div class="istat"><div class="istat-label">Conversão</div><div class="istat-value" style="color:var(--success);">${g.conv}%</div></div>
         <div class="istat"><div class="istat-label">Chargeback</div><div class="istat-value" style="color:var(--danger);">0.8%</div></div>
@@ -3890,8 +4042,19 @@ function switchTikTokTab(el, panelId) {
   const panel = document.getElementById(panelId);
   if(panel) { panel.style.display='block'; if(panelId==='tt-relatorio') initTikTokChart(); }
 }
-function renderTikTokContas() {
-  const contas = DB.get('tiktok_contas')||[];
+async function renderTikTokContas() {
+  let contas = [];
+  if(currentUser) {
+    const { data } = await supa.from('tiktok_accounts')
+      .select('*').eq('user_id', currentUser.id);
+    contas = (data||[]).map(c => ({
+      id: c.id, name: c.name, pixel: c.pixel_id,
+      status: c.status, events: c.events_count||0, revenue: c.revenue||0
+    }));
+    DB._set('tiktok_contas', contas);
+  } else {
+    contas = DB._get('tiktok_contas') || [];
+  }
   document.getElementById('tiktok-contas-list').innerHTML = contas.length ? contas.map(c=>`
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -3981,7 +4144,7 @@ function onPageLoad(page) {
     case 'redirects':
       if(currentUser) renderRedirectsFromDB(); else renderRedirects();
       break;
-    case 'chat':         renderChatList(); openChat(1); break;
+    case 'chat':         renderChatList(); break;
     case 'integrations': renderIntegrations(); break;
     case 'tiktok':       renderTikTokContas(); renderTikTokDominios(); renderTikTokLinks(); break;
     case 'settings':
