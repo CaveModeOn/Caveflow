@@ -1912,15 +1912,61 @@ textarea.form-control { resize: vertical; min-height: 80px; }
 
 <!-- New Funil -->
 <div class="modal-overlay" id="modal-funil">
-  <div class="modal">
+  <div class="modal" style="width:400px;">
     <div class="modal-title">🛍️ Novo Funil<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-funil')">✕</button></div>
-    <div class="form-group"><label class="form-label">Nome do Funil</label><input class="form-control" id="funil-name" placeholder="Funil Black Friday"></div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Bot Associado</label><select class="form-control" id="funil-bot"><option>Selecionar Bot</option></select></div>
-      <div class="form-group"><label class="form-label">Emoji/Ícone</label><input class="form-control" id="funil-emoji" value="🛒" maxlength="2"></div>
+    <div class="form-group">
+      <label class="form-label">Nome do Funil</label>
+      <input class="form-control" id="funil-name" placeholder="Ex: Funil de Vendas Principal" autofocus>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Você poderá configurar bot, produtos e automação depois.</div>
     </div>
-    <div class="form-group"><label class="form-label">Categorias</label><input class="form-control" id="funil-cats" placeholder="Ex: Digital, Físico, Serviço (separar por vírgula)"></div>
+    <input type="hidden" id="funil-bot" value="">
+    <input type="hidden" id="funil-emoji" value="🛒">
     <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveFunil()">Criar Funil</button>
+  </div>
+</div>
+
+<!-- Modal configurar funil -->
+<div class="modal-overlay" id="modal-funil-config">
+  <div class="modal" style="width:520px;">
+    <div class="modal-title">⚙️ Configurar Funil<button class="btn btn-ghost btn-sm" onclick="closeModal('modal-funil-config')">✕</button></div>
+    <input type="hidden" id="funil-config-id">
+
+    <div class="form-group">
+      <label class="form-label">Nome</label>
+      <input class="form-control" id="funil-config-name" placeholder="Nome do funil">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Bot da Automação</label>
+        <select class="form-control" id="funil-config-bot">
+          <option value="">Selecionar Bot</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Emoji</label>
+        <input class="form-control" id="funil-config-emoji" maxlength="2" value="🛒" style="font-size:20px;text-align:center;">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-control" id="funil-config-status">
+        <option value="active">Ativo</option>
+        <option value="paused">Pausado</option>
+      </select>
+    </div>
+
+    <div style="border-top:1px solid var(--border-subtle);padding-top:16px;margin-top:4px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:12px;">Produtos do Funil</div>
+      <div id="funil-config-items" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+      <button class="btn btn-outline btn-sm" onclick="addFunilItem()">+ Adicionar Produto</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:20px;">
+      <button class="btn btn-outline" style="flex:1;" onclick="closeModal('modal-funil-config')">Cancelar</button>
+      <button class="btn btn-primary" style="flex:1;" onclick="saveFunilConfig()">Salvar Configurações</button>
+    </div>
   </div>
 </div>
 
@@ -2651,20 +2697,91 @@ async function saveABTest() {
 //  SUPABASE CRUD — FUNNELS
 // ═══════════════════════════════════════════════
 async function saveFunil() {
-  const name  = document.getElementById('funil-name').value.trim();
-  const emoji = document.getElementById('funil-emoji').value || '🛒';
-  if(!name){ toast('Informe o nome!','error'); return; }
+  const name = document.getElementById('funil-name').value.trim();
+  if(!name){ toast('Informe o nome do funil!','error'); return; }
 
-  const row = await DB.insert('funnels', { name, emoji, categories:[], items:[], status:'paused' });
-  if(!row){ toast('Erro ao criar funil.','error'); return; }
+  const btn = document.querySelector('#modal-funil .btn-primary');
+  btn.textContent = '⏳ Criando...';
+  btn.disabled    = true;
 
+  const row = await DB.insert('funnels', { name, emoji:'🛒', categories:[], items:[], status:'paused' });
+
+  btn.textContent = 'Criar Funil';
+  btn.disabled    = false;
+
+  if(!row){ toast('Erro ao criar funil. Tente novamente.','error'); return; }
+
+  // Sync local
   const local = DB._get('funils') || [];
-  local.push({id: row.id, name, bot:'Sem bot', items:0, emoji, status:'paused'});
+  local.push({ id: row.id, name, bot:'—', items:0, emoji:'🛒', status:'paused' });
   DB._set('funils', local);
 
+  document.getElementById('funil-name').value = '';
   closeModal('modal-funil');
-  renderFunil();
-  toast('Funil salvo na nuvem! ☁️');
+  await renderFunil();
+  toast(`Funil "${name}" criado! Clique em ⚙️ para configurar.`);
+}
+
+// ── Configurar funil ─────────────────────────────────────────
+let funilItems = [];
+
+function openFunilConfig(id, name, emoji, status, botId) {
+  document.getElementById('funil-config-id').value     = id;
+  document.getElementById('funil-config-name').value   = name;
+  document.getElementById('funil-config-emoji').value  = emoji || '🛒';
+  document.getElementById('funil-config-status').value = status || 'paused';
+
+  // Popular bots
+  const bots = DB._get('bots') || [];
+  const botOpts = '<option value="">Sem bot</option>' + bots.map(b=>`<option value="${b.id}" ${b.id==botId?'selected':''}>${b.name}</option>`).join('');
+  document.getElementById('funil-config-bot').innerHTML = botOpts;
+
+  funilItems = [];
+  renderFunilItems();
+  openModal('modal-funil-config');
+}
+
+function addFunilItem() {
+  funilItems.push({ id: Date.now(), name:'', price:'', description:'' });
+  renderFunilItems();
+}
+
+function renderFunilItems() {
+  document.getElementById('funil-config-items').innerHTML = funilItems.length
+    ? funilItems.map((item, i) => `
+        <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:10px;display:flex;gap:8px;align-items:flex-start;">
+          <div style="flex:2;">
+            <input class="form-control" style="margin-bottom:6px;font-size:12px;" placeholder="Nome do produto"
+              value="${item.name}" oninput="funilItems[${i}].name=this.value">
+            <input class="form-control" style="font-size:12px;" placeholder="Preço (ex: 197.00)"
+              value="${item.price}" oninput="funilItems[${i}].price=this.value">
+          </div>
+          <button onclick="funilItems.splice(${i},1);renderFunilItems()"
+            style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:4px;">✕</button>
+        </div>`).join('')
+    : '<div style="font-size:12px;color:var(--text-muted);">Nenhum produto ainda. Clique em "+ Adicionar Produto".</div>';
+}
+
+async function saveFunilConfig() {
+  const id     = document.getElementById('funil-config-id').value;
+  const name   = document.getElementById('funil-config-name').value.trim();
+  const emoji  = document.getElementById('funil-config-emoji').value || '🛒';
+  const status = document.getElementById('funil-config-status').value;
+  const botId  = document.getElementById('funil-config-bot').value || null;
+
+  if(!name){ toast('Informe o nome!','error'); return; }
+
+  const updated = await DB.update('funnels', id, {
+    name, emoji, status,
+    bot_id: botId || null,
+    items:  funilItems
+  });
+
+  if(!updated){ toast('Erro ao salvar.','error'); return; }
+
+  closeModal('modal-funil-config');
+  await renderFunil();
+  toast('Funil configurado! ☁️');
 }
 
 // ═══════════════════════════════════════════════
@@ -3849,7 +3966,9 @@ async function renderFunil() {
       .select('*').eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
     funils = (data||[]).map(f => ({
-      id: f.id, name: f.name, bot: 'Bot',
+      id: f.id, name: f.name,
+      bot: f.bot_id ? (DB._get('bots')||[]).find(b=>b.id==f.bot_id)?.name || '—' : '—',
+      botId: f.bot_id || '',
       items: Array.isArray(f.items) ? f.items.length : 0,
       emoji: f.emoji||'🛒', status: f.status
     }));
@@ -3861,31 +3980,37 @@ async function renderFunil() {
     <div class="funnel-card">
       <div class="funnel-thumb">${f.emoji||'🛒'}</div>
       <div class="funnel-body">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
           <div class="funnel-name">${f.name}</div>
           <span class="badge ${f.status==='active'?'badge-success':'badge-warning'}">${f.status==='active'?'Ativo':'Pausado'}</span>
         </div>
-        <div class="funnel-meta">Bot: ${f.bot} · ${f.items} itens</div>
+        <div class="funnel-meta" style="margin-bottom:12px;">
+          ${f.bot && f.bot !== '—' ? 'Bot: '+f.bot+' · ' : '<span style="color:var(--warning);font-size:11px;">⚠️ Sem bot · </span>'}${f.items} produto(s)
+        </div>
         <div class="funnel-actions">
-          <button class="btn btn-outline btn-sm" onclick="toast('Editor de funil em breve!')">✏️ Editar</button>
-          <button class="btn btn-outline btn-sm" onclick="toggleFunil(${f.id})">${f.status==='active'?'⏸':'▶'}</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteFunil(${f.id})">🗑️</button>
+          <button class="btn btn-primary btn-sm" onclick="openFunilConfig('${f.id}','${f.name.replace(/'/g,"\'")}','${f.emoji||'🛒'}','${f.status}','${f.botId||''}')">⚙️ Configurar</button>
+          <button class="btn btn-outline btn-sm" onclick="toggleFunilDB('${f.id}','${f.status}')">${f.status==='active'?'⏸':'▶'}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFunilDB('${f.id}')">🗑️</button>
         </div>
       </div>
-    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🛍️</div><h3>Nenhum funil criado</h3></div>`;
+    </div>`).join('') : `<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">🛍️</div><h3>Nenhum funil criado</h3><p>Clique em "+ Novo Funil" para começar</p></div>`;
 }
-function toggleFunil(id) {
-  const f=DB.get('funils')||[]; const item=f.find(x=>x.id===id);
-  if(item){ item.status=item.status==='active'?'paused':'active'; DB.set('funils',f); renderFunil(); }
+async function toggleFunilDB(id, currentStatus) {
+  const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+  await DB.update('funnels', id, { status: newStatus });
+  await renderFunil();
+  toast(newStatus === 'active' ? 'Funil ativado!' : 'Funil pausado!');
 }
-function deleteFunil(id){ DB.set('funils',(DB.get('funils')||[]).filter(f=>f.id!==id)); renderFunil(); toast('Funil removido.'); }
-function saveFunil() {
-  const name=document.getElementById('funil-name').value.trim();
-  if(!name){ toast('Informe o nome!','error'); return; }
-  const f=DB.get('funils')||[];
-  f.push({id:Date.now(),name,bot:document.getElementById('funil-bot').value||'Sem bot',items:0,emoji:document.getElementById('funil-emoji').value||'🛒',status:'paused'});
-  DB.set('funils',f); closeModal('modal-funil'); renderFunil(); toast('Funil criado!');
+async function deleteFunilDB(id) {
+  if(!confirm('Tem certeza que deseja remover este funil?')) return;
+  await DB.delete('funnels', id);
+  await renderFunil();
+  toast('Funil removido.');
 }
+// aliases legados
+function toggleFunil(id) { toggleFunilDB(id,'paused'); }
+function deleteFunil(id)  { deleteFunilDB(id); }
+// saveFunil legado removido — versão Supabase abaixo
 
 // ═══════════════════════════════════════════════
 //  A/B TESTS
