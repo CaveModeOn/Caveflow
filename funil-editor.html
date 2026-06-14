@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowGram — Editor de Funil</title>
+<style>
+:root {
+  --bg-base: #0a0b0f;
+  --bg-surface: #111318;
+  --bg-card: #16181f;
+  --bg-elevated: #1c1f28;
+  --bg-hover: #21242e;
+  --border: #252836;
+  --border-subtle: #1e2030;
+  --accent: #6c63ff;
+  --accent-dim: #4f48c4;
+  --accent-glow: rgba(108,99,255,0.18);
+  --success: #00d4aa;
+  --danger: #ff4d6a;
+  --warning: #ffb347;
+  --text-primary: #e8eaf0;
+  --text-secondary: #8b90a7;
+  --text-muted: #555b75;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --transition: 0.2s ease;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-base); color: var(--text-primary); min-height: 100vh; }
+::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+/* ── TOPBAR ── */
+.topbar {
+  height: 60px; background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle);
+  display: flex; align-items: center; padding: 0 24px; gap: 16px; position: sticky; top: 0; z-index: 100;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.back-btn {
+  display: flex; align-items: center; gap: 6px; padding: 7px 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 13px; cursor: pointer; transition: var(--transition);
+  text-decoration: none;
+}
+.back-btn:hover { color: var(--text-primary); }
+.funil-title { font-size: 17px; font-weight: 700; }
+.funil-title input {
+  background: transparent; border: none; color: var(--text-primary); font-size: 17px; font-weight: 700;
+  outline: none; font-family: inherit; border-bottom: 1px dashed var(--border);
+}
+.lang-tabs { display: flex; gap: 4px; margin-left: 8px; }
+.lang-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-muted);
+  transition: var(--transition);
+}
+.lang-btn.active { background: #009c3b; color: #fff; border-color: #009c3b; }
+.lang-btn.global { }
+.save-btn {
+  margin-left: auto; padding: 9px 20px; background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;
+  cursor: pointer; display: flex; align-items: center; gap: 6px; transition: var(--transition);
+}
+.save-btn:hover { background: var(--accent-dim); }
+.save-btn.saved { background: var(--success); }
+
+/* ── TABS ── */
+.tabs-bar {
+  background: var(--bg-surface); border-bottom: 1px solid var(--border-subtle);
+  padding: 0 24px; display: flex; gap: 2px; overflow-x: auto;
+}
+.tabs-bar::-webkit-scrollbar { height: 0; }
+.tab-btn {
+  display: flex; align-items: center; gap: 6px; padding: 14px 16px;
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
+  transition: var(--transition); background: none; border-top: none; border-left: none; border-right: none;
+}
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── CONTENT ── */
+.content { max-width: 860px; margin: 0 auto; padding: 28px 24px; }
+.panel { display: none; } .panel.active { display: block; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--bg-card); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg); padding: 22px; margin-bottom: 16px;
+}
+.card-title {
+  font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.card-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; }
+.card-badge {
+  font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+  background: var(--bg-elevated); color: var(--text-secondary); margin-left: auto;
+}
+
+/* ── FORM ── */
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+.form-label .req { color: var(--danger); margin-left: 2px; }
+.form-control {
+  width: 100%; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); padding: 9px 12px;
+  font-size: 13px; font-family: inherit; outline: none; transition: var(--transition);
+}
+.form-control:focus { border-color: var(--accent); }
+textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+/* ── RICH TEXT TOOLBAR ── */
+.rich-toolbar {
+  display: flex; gap: 4px; padding: 8px 10px; background: var(--bg-elevated);
+  border: 1px solid var(--border); border-bottom: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+.rich-btn {
+  width: 28px; height: 28px; border-radius: 4px; background: none; border: none;
+  cursor: pointer; color: var(--text-secondary); font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; transition: var(--transition);
+}
+.rich-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+.rich-sep { width: 1px; background: var(--border); margin: 0 4px; }
+.rich-area {
+  width: 100%; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm); color: var(--text-primary);
+  padding: 12px; font-size: 13px; font-family: inherit; outline: none;
+  min-height: 120px; resize: vertical; line-height: 1.6;
+}
+.rich-area:focus { border-color: var(--accent); }
+.var-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.var-tag {
+  padding: 3px 10px; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 99px; font-size: 11px; color: var(--accent); cursor: pointer;
+  font-family: monospace; transition: var(--transition);
+}
+.var-tag:hover { background: var(--accent-glow); border-color: var(--accent); }
+.char-count { font-size: 11px; color: var(--text-muted); text-align: right; margin-top: 4px; }
+
+/* ── TOGGLE ── */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info .toggle-label { font-size: 13px; font-weight: 500; }
+.toggle-info .toggle-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.toggle {
+  width: 40px; height: 22px; background: var(--border); border-radius: 99px;
+  cursor: pointer; position: relative; transition: var(--transition); flex-shrink: 0;
+}
+.toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--text-muted); transition: var(--transition);
+}
+.toggle.on { background: var(--accent); }
+.toggle.on::after { left: 21px; background: #fff; }
+
+/* ── PLAN CARD ── */
+.plan-card {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+}
+.plan-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.plan-num {
+  width: 28px; height: 28px; border-radius: 6px; background: var(--accent-glow);
+  color: var(--accent); font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.plan-name-input {
+  flex: 1; background: transparent; border: none; border-bottom: 1px dashed var(--border);
+  color: var(--text-primary); font-size: 14px; font-weight: 600; outline: none; font-family: inherit;
+}
+.plan-actions { display: flex; gap: 6px; margin-left: auto; }
+
+/* ── UPSELL/DOWNSELL SEQ ── */
+.seq-card {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 8px;
+}
+.seq-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.seq-num {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--accent-glow);
+  color: var(--accent); font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.delay-select {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-primary); padding: 5px 10px; font-size: 12px; outline: none; font-family: inherit;
+}
+
+/* ── BOT ITEM ── */
+.bot-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 8px;
+}
+.bot-avatar {
+  width: 42px; height: 42px; border-radius: 50%; background: var(--accent-glow);
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.bot-info { flex: 1; }
+.bot-name { font-size: 13px; font-weight: 600; }
+.bot-user { font-size: 12px; color: var(--text-muted); }
+.badge-principal { background: rgba(0,212,170,0.15); color: var(--success); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+
+/* ── ADD SELECT ── */
+.add-select-row { display: flex; gap: 8px; margin-top: 10px; }
+.add-select {
+  flex: 1; background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary); padding: 9px 12px;
+  font-size: 13px; outline: none; font-family: inherit;
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  background: var(--bg-elevated); border-radius: var(--radius); padding: 14px 18px;
+  display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 20px;
+}
+.stat-item { display: flex; align-items: center; gap: 6px; }
+.stat-val { font-weight: 700; }
+.stat-val.green { color: var(--success); }
+.stat-val.blue { color: var(--accent); }
+.stat-val.yellow { color: var(--warning); }
+.stat-sep { color: var(--border); margin: 0 4px; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+  border-radius: var(--radius-sm); font-size: 13px; font-weight: 500;
+  cursor: pointer; border: none; transition: var(--transition); font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dim); }
+.btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-danger { background: rgba(255,77,106,0.12); color: var(--danger); border: 1px solid rgba(255,77,106,0.2); }
+.btn-danger:hover { background: rgba(255,77,106,0.22); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover { color: var(--danger); }
+
+/* ── SECTION HDR ── */
+.section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-hdr h3 { font-size: 14px; font-weight: 700; }
+.section-hdr .count { font-size: 12px; color: var(--text-muted); }
+
+/* ── DELIVERY OPTIONS ── */
+.delivery-opt {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  cursor: pointer; transition: var(--transition); margin-bottom: 6px;
+}
+.delivery-opt:hover { border-color: var(--accent); }
+.delivery-opt.selected { border-color: var(--accent); background: var(--accent-glow); }
+.delivery-radio {
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: var(--transition);
+}
+.delivery-opt.selected .delivery-radio { border-color: var(--accent); }
+.delivery-opt.selected .delivery-radio::after { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: block; }
+
+/* ── EMPTY ── */
+.empty-seq {
+  text-align: center; padding: 40px 20px; color: var(--text-muted);
+  border: 1px dashed var(--border); border-radius: var(--radius); font-size: 13px;
+}
+.empty-seq .ei { font-size: 32px; margin-bottom: 8px; }
+
+/* ── PAYMENT VARS ── */
+.pix-vars { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.pix-var {
+  padding: 4px 10px; background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.2);
+  border-radius: 99px; font-size: 11px; color: var(--success); cursor: pointer; font-family: monospace;
+}
+.pix-var:hover { background: rgba(0,212,170,0.2); }
+
+/* ── TOAST ── */
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+  background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 16px; font-size: 13px; animation: slideIn 0.25s ease;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.success { border-color: rgba(0,212,170,0.3); }
+@keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <a href="javascript:history.back()" class="back-btn">← Voltar</a>
+    <div class="funil-title">
+      <input type="text" id="funil-title-input" value="Meu Funil de Vendas" oninput="markUnsaved()">
+    </div>
+    <div class="lang-tabs">
+      <div class="lang-btn active" onclick="setLang('br',this)">🇧🇷 Brasil</div>
+      <div class="lang-btn" onclick="setLang('global',this)">🇺🇸 Global</div>
+    </div>
+  </div>
+  <button class="save-btn" id="save-btn" onclick="saveFunil()">💾 Salvar Configuração</button>
+</header>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('bots',this)">🤖 Bots</button>
+  <button class="tab-btn" onclick="switchTab('boasvindas',this)">💬 Boas-vindas</button>
+  <button class="tab-btn" onclick="switchTab('planos',this)">💳 Planos</button>
+  <button class="tab-btn" onclick="switchTab('upsell',this)">📈 Upsell</button>
+  <button class="tab-btn" onclick="switchTab('downsell',this)">📉 Downsell</button>
+  <button class="tab-btn" onclick="switchTab('orderbump',this)">🛒 Order Bump</button>
+  <button class="tab-btn" onclick="switchTab('packs',this)">📦 Packs</button>
+  <button class="tab-btn" onclick="switchTab('pagamentos',this)">💰 Pagamentos</button>
+  <button class="tab-btn" onclick="switchTab('assinatura',this)">🔄 Assinatura</button>
+</div>
+
+<!-- CONTENT -->
+<div class="content">
+
+  <!-- ── BOTS ── -->
+  <div class="panel active" id="panel-bots">
+    <div id="stats-bar-bots" class="stats-bar">
+      <span>📊</span>
+      <span class="stat-item">Leads: <span class="stat-val blue" id="stat-leads">0</span></span>
+      <span class="stat-sep">·</span>
+      <span class="stat-item">PIX pagos: <span class="stat-val green" id="stat-pix">0</span></span>
+      <span class="stat-sep">·</span>
+      <span class="stat-item">Conversão: <span class="stat-val yellow" id="stat-conv">0%</span></span>
+      <span class="stat-sep">·</span>
+      <span class="stat-item">Receita: <span class="stat-val green" id="stat-rev">R$ 0,00</span></span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🤖 Bots Vinculados <span class="card-badge" id="bots-count">0/5 bot(s)</span></div>
+      <div class="card-sub">Gerencie os bots que executam este fluxo</div>
+      <div id="bots-list"></div>
+      <div class="add-select-row">
+        <select class="add-select" id="add-bot-select">
+          <option value="">Selecione um bot para adicionar...</option>
+        </select>
+        <button class="btn btn-outline" onclick="addBot()">+ Adicionar</button>
+        <button class="btn btn-ghost btn-sm" onclick="refreshBots()" title="Atualizar">🔄</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── BOAS-VINDAS ── -->
+  <div class="panel" id="panel-boasvindas">
+    <div class="card">
+      <div class="card-title">💬 Mensagem de Boas-vindas <span style="color:var(--danger);font-size:13px;">*</span></div>
+      <div class="card-sub">Primeira mensagem enviada ao lead ao entrar no bot</div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">Mídia Dinâmica</div>
+          <div class="toggle-desc">Envia uma imagem ou vídeo junto com a mensagem</div>
+        </div>
+        <div class="toggle" id="toggle-midia" onclick="this.classList.toggle('on');toggleMidia()"></div>
+      </div>
+
+      <div id="midia-box" style="display:none;margin:12px 0;">
+        <div class="form-group">
+          <label class="form-label">Tipo de mídia</label>
+          <select class="form-control" id="midia-type">
+            <option value="image">🖼️ Imagem</option>
+            <option value="video">🎬 Vídeo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">URL da mídia</label>
+          <input class="form-control" id="midia-url" placeholder="https://...">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">Mensagem <span class="req">*</span></label>
+        <div class="rich-toolbar">
+          <button class="rich-btn" onclick="fmt('bold')" title="Negrito"><b>B</b></button>
+          <button class="rich-btn" onclick="fmt('italic')" title="Itálico"><i>I</i></button>
+          <button class="rich-btn" onclick="fmt('underline')" title="Sublinhado"><u>U</u></button>
+          <button class="rich-btn" onclick="fmt('strikethrough')" title="Tachado"><s>S</s></button>
+          <div class="rich-sep"></div>
+          <button class="rich-btn" onclick="fmt('code')" title="Código">&lt;&gt;</button>
+          <button class="rich-btn" onclick="fmt('link')" title="Link">🔗</button>
+          <button class="rich-btn" onclick="fmt('emoji')" title="Emoji">😊</button>
+        </div>
+        <textarea class="rich-area" id="bv-msg" placeholder="Oii {nome}, tudo bem? 👀&#10;&#10;Escreva sua mensagem aqui..." oninput="countChars(this,'bv-count')"></textarea>
+        <div class="char-count"><span id="bv-count">0</span>/4000</div>
+      </div>
+
+      <div class="var-tags">
+        <span class="form-label" style="margin:0;align-self:center;">Variáveis:</span>
+        <span class="var-tag" onclick="insertVar('bv-msg','{nome}')">&#123;nome&#125;</span>
+        <span class="var-tag" onclick="insertVar('bv-msg','{primeiro_nome}')">&#123;primeiro_nome&#125;</span>
+        <span class="var-tag" onclick="insertVar('bv-msg','{saudacao}')">&#123;saudacao&#125;</span>
+        <span class="var-tag" onclick="insertVar('bv-msg','{uf}')">&#123;uf&#125;</span>
+        <span class="var-tag" onclick="insertVar('bv-msg','{username}')">&#123;username&#125;</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PLANOS ── -->
+  <div class="panel" id="panel-planos">
+    <div class="card">
+      <div class="section-hdr">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">💳 Planos de Pagamento</div>
+          <div class="card-sub" style="margin:0;">Configure até 10 planos com entregas personalizadas</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="card-badge" id="planos-count">0/10</span>
+          <button class="btn btn-primary btn-sm" onclick="addPlano()">+ Novo Plano</button>
+        </div>
+      </div>
+      <div id="planos-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📦 Entrega Padrão (Fallback)</div>
+      <div class="card-sub">Usada quando o plano está em "Usar padrão"</div>
+      <div class="form-group">
+        <label class="form-label">Destino da Entrega <span class="req">*</span></label>
+        <div class="delivery-opt selected" onclick="selectDelivery(this,'link')" id="del-link">
+          <div class="delivery-radio"></div>
+          <span>🔗 Link Externo</span>
+        </div>
+        <div class="delivery-opt" onclick="selectDelivery(this,'group')" id="del-group">
+          <div class="delivery-radio"></div>
+          <span>👥 Grupo/Canal Telegram</span>
+        </div>
+        <div class="delivery-opt" onclick="selectDelivery(this,'msg')" id="del-msg">
+          <div class="delivery-radio"></div>
+          <span>💬 Mensagem Personalizada</span>
+        </div>
+      </div>
+      <div id="delivery-input" class="form-group">
+        <input class="form-control" id="delivery-url" placeholder="https://t.me/...">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UPSELL ── -->
+  <div class="panel" id="panel-upsell">
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">📈 Upsell</div>
+          <div style="font-size:12px;color:var(--text-muted);">Aumente suas vendas com ofertas especiais pós-compra</div>
+        </div>
+        <div class="toggle on" id="toggle-upsell" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">Ativar Upsell</div>
+          <div class="toggle-desc">Envia oferta após pagamento aprovado</div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">Upsell Instantâneo</div>
+          <div class="toggle-desc">Envia imediatamente após confirmação</div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-hdr">
+        <div>
+          <h3>Sequências de Upsell</h3>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="upsell-seq-count">0/20</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addSeq('upsell')">+ Nova Sequência</button>
+      </div>
+      <div id="upsell-seqs"></div>
+    </div>
+  </div>
+
+  <!-- ── DOWNSELL ── -->
+  <div class="panel" id="panel-downsell">
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="btn btn-primary btn-sm" id="ds-tab-geral" onclick="switchDsTab('geral')">Geral</button>
+      <button class="btn btn-outline btn-sm" id="ds-tab-pix" onclick="switchDsTab('pix')">PIX Gerado</button>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;" id="ds-desc">
+      Sequências enviadas após o /start para todos os leads que não compraram.
+    </div>
+
+    <div class="card" id="ds-panel-geral">
+      <div class="section-hdr">
+        <div><h3>Sequências Downsell — Geral</h3></div>
+        <button class="btn btn-primary btn-sm" onclick="addSeq('downsell-geral')">+ Nova Sequência</button>
+      </div>
+      <div id="downsell-geral-seqs"></div>
+    </div>
+
+    <div class="card" id="ds-panel-pix" style="display:none;">
+      <div class="section-hdr">
+        <div>
+          <h3>Sequências Downsell — PIX Gerado</h3>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Enviadas para quem gerou PIX mas não pagou</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addSeq('downsell-pix')">+ Nova Sequência</button>
+      </div>
+      <div id="downsell-pix-seqs"></div>
+    </div>
+  </div>
+
+  <!-- ── ORDER BUMP ── -->
+  <div class="panel" id="panel-orderbump">
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">🛒 Order Bump</div>
+          <div style="font-size:12px;color:var(--text-muted);">Produto adicional oferecido no checkout antes do pagamento</div>
+        </div>
+        <div class="toggle" id="toggle-ob" onclick="this.classList.toggle('on');toggleOrderBump()"></div>
+      </div>
+      <div id="ob-config" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome do Produto</label>
+            <input class="form-control" id="ob-name" placeholder="Pack Extra VIP">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Preço (R$)</label>
+            <input class="form-control" id="ob-price" type="number" placeholder="29.90" step="0.01">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Descrição do Bump</label>
+          <textarea class="form-control" id="ob-desc" rows="3" placeholder="Adicione também o pack extra com 50 fotos exclusivas por apenas R$ 29,90!"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gateway</label>
+          <select class="form-control" id="ob-gateway">
+            <option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Entrega após compra</label>
+          <input class="form-control" id="ob-delivery" placeholder="https://t.me/...">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PACKS ── -->
+  <div class="panel" id="panel-packs">
+    <div class="card">
+      <div class="section-hdr">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">📦 Packs</div>
+          <div style="font-size:12px;color:var(--text-muted);">Venda conteúdos avulsos além das assinaturas</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addPack()">+ Novo Pack</button>
+      </div>
+      <div id="packs-list"></div>
+    </div>
+  </div>
+
+  <!-- ── PAGAMENTOS ── -->
+  <div class="panel" id="panel-pagamentos">
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <button class="btn btn-primary btn-sm" id="pg-tab-gerado" onclick="switchPgTab('gerado')">Pagamento Gerado</button>
+      <button class="btn btn-outline btn-sm" id="pg-tab-aprovado" onclick="switchPgTab('aprovado')">Pagamento Aprovado</button>
+    </div>
+
+    <!-- PIX Gerado -->
+    <div id="pg-panel-gerado">
+      <div class="card">
+        <div class="card-title">⚡ Mensagem de PIX Gerado</div>
+        <div class="card-sub">Enviada quando o lead gera o código PIX</div>
+        <div class="rich-toolbar">
+          <button class="rich-btn" onclick="fmt('bold')" title="B"><b>B</b></button>
+          <button class="rich-btn" onclick="fmt('italic')" title="I"><i>I</i></button>
+          <button class="rich-btn" onclick="fmt('code')" title="<>">&lt;&gt;</button>
+        </div>
+        <textarea class="rich-area" id="pg-gerado-msg" oninput="countChars(this,'pg-gerado-count')" placeholder="✅ PIX gerado com sucesso!&#10;&#10;Valor: R$ {valor}&#10;&#10;{qr_code}&#10;&#10;Copie o código PIX abaixo 👇"></textarea>
+        <div class="char-count"><span id="pg-gerado-count">0</span>/4000</div>
+        <div class="pix-vars">
+          <span style="font-size:11px;color:var(--text-muted);align-self:center;">Variáveis:</span>
+          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{nome}')">&#123;nome&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{plano}')">&#123;plano&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{valor}')">&#123;valor&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{qr_code}')">&#123;qr_code&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{saudacao}')">&#123;saudacao&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{uf}')">&#123;uf&#125;</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">✨ Botões & CTA</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-label">Mensagem antes dos botões</div>
+          </div>
+          <div class="toggle on" id="toggle-msg-btn" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <input class="form-control" id="cta-msg" value="Após efetuar o pagamento, clique no botão abaixo ⬇️" style="margin-top:10px;">
+        <div class="toggle-row" style="margin-top:10px;">
+          <div class="toggle-info">
+            <div class="toggle-label">Código PIX na mesma mensagem</div>
+            <div class="toggle-desc">PIX será enviado em mensagem separada</div>
+          </div>
+          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div id="pg-buttons-list" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPgButton('gerado')">+ Adicionar Botão</button>
+      </div>
+    </div>
+
+    <!-- PIX Aprovado -->
+    <div id="pg-panel-aprovado" style="display:none;">
+      <div class="card">
+        <div class="card-title">✅ Mensagem de Pagamento Aprovado</div>
+        <div class="card-sub">Enviada automaticamente após confirmação do pagamento</div>
+        <div class="rich-toolbar">
+          <button class="rich-btn"><b>B</b></button>
+          <button class="rich-btn"><i>I</i></button>
+          <button class="rich-btn">&lt;&gt;</button>
+        </div>
+        <textarea class="rich-area" id="pg-aprovado-msg" oninput="countChars(this,'pg-aprov-count')" placeholder="🎉 Pagamento confirmado, {nome}!&#10;&#10;Seja bem-vindo(a) ao grupo VIP 👑&#10;&#10;Clique no link abaixo para acessar:"></textarea>
+        <div class="char-count"><span id="pg-aprov-count">0</span>/4000</div>
+        <div class="pix-vars">
+          <span style="font-size:11px;color:var(--text-muted);align-self:center;">Variáveis:</span>
+          <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{nome}')">&#123;nome&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{plano}')">&#123;plano&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{valor}')">&#123;valor&#125;</span>
+          <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{link_entrega}')">&#123;link_entrega&#125;</span>
+        </div>
+      </div>
+      <div id="pg-aprovado-buttons" style="margin-top:0;">
+        <div class="card">
+          <div class="card-title" style="margin-bottom:12px;">🔘 Botões pós-aprovação</div>
+          <div id="pg-aprov-buttons-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPgButton('aprovado')">+ Adicionar Botão</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ASSINATURA ── -->
+  <div class="panel" id="panel-assinatura">
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div class="card-title" style="margin-bottom:4px;">🔄 Assinatura Recorrente</div>
+          <div style="font-size:12px;color:var(--text-muted);">Configure planos de assinatura com renovação automática</div>
+        </div>
+        <div class="toggle" id="toggle-assin" onclick="this.classList.toggle('on');toggleAssinatura()"></div>
+      </div>
+      <div id="assin-config" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Período de Renovação</label>
+            <select class="form-control" id="assin-period">
+              <option value="7">7 dias</option>
+              <option value="15">15 dias</option>
+              <option value="30" selected>30 dias</option>
+              <option value="60">60 dias</option>
+              <option value="90">90 dias</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Aviso antes do vencimento</label>
+            <select class="form-control" id="assin-warn">
+              <option value="1">1 dia antes</option>
+              <option value="2">2 dias antes</option>
+              <option value="3" selected>3 dias antes</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mensagem de renovação</label>
+          <textarea class="form-control" id="assin-msg" rows="3" placeholder="Oi {nome}! Sua assinatura vence em {dias} dias. Renove agora para continuar com acesso! 🔄"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ação ao expirar</label>
+          <select class="form-control" id="assin-expire">
+            <option>Remover do grupo automaticamente</option>
+            <option>Enviar mensagem e aguardar</option>
+            <option>Apenas notificar</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+const SUPA_URL = 'https://gqaaupjhcyptbwctkxlu.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYWF1cGpoY3lwdGJ3Y3RreGx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjcxMzEsImV4cCI6MjA5NzAwMzEzMX0.W_vY4ey-ya8G9fVbRg-LOLWbs0CJddnfGzZDjPOvkHg';
+
+// Get funil ID from URL params
+const params = new URLSearchParams(location.search);
+const FUNIL_ID = params.get('id');
+
+let state = {
+  id: FUNIL_ID,
+  name: 'Meu Funil de Vendas',
+  lang: 'br',
+  bots: [],
+  boasvindas: { msg: '', midia: false, midia_type: 'image', midia_url: '' },
+  planos: [],
+  upsell: { active: true, instant: false, seqs: [] },
+  downsell: { geral: [], pix: [] },
+  orderbump: { active: false, name: '', price: '', desc: '', gateway: 'TriboPay', delivery: '' },
+  packs: [],
+  pagamentos: {
+    gerado: { msg: '', cta_msg: 'Após efetuar o pagamento, clique no botão abaixo ⬇️', buttons: [] },
+    aprovado: { msg: '', buttons: [] }
+  },
+  assinatura: { active: false, period: 30, warn: 3, msg: '', expire: 'Remover do grupo automaticamente' }
+};
+
+let allBots = [];
+let unsaved = false;
+
+// ── Init ──────────────────────────────────────────────────
+async function init() {
+  await loadBots();
+  if(FUNIL_ID) await loadFunil();
+  renderAll();
+}
+
+async function loadBots() {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/bots?select=*&order=created_at.asc`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    allBots = await res.json() || [];
+    populateBotSelect();
+  } catch(e) { console.error('loadBots', e); }
+}
+
+async function loadFunil() {
+  try {
+    const res = await fetch(`${SUPA_URL}/rest/v1/funnels?id=eq.${FUNIL_ID}&select=*`, {
+      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
+    });
+    const data = await res.json();
+    if(data?.[0]) {
+      const f = data[0];
+      document.getElementById('funil-title-input').value = f.name || 'Meu Funil';
+      if(f.config) Object.assign(state, f.config);
+      state.id = FUNIL_ID;
+      state.name = f.name;
+    }
+  } catch(e) { console.error('loadFunil', e); }
+}
+
+function populateBotSelect() {
+  const sel = document.getElementById('add-bot-select');
+  const existingIds = state.bots.map(b => b.id);
+  sel.innerHTML = '<option value="">Selecione um bot para adicionar...</option>' +
+    allBots.filter(b => !existingIds.includes(b.id))
+      .map(b => `<option value="${b.id}">${b.name} (${b.username||'sem username'})</option>`).join('');
+}
+
+function renderAll() {
+  renderBotsList();
+  renderPlanos();
+  renderSeqs('upsell');
+  renderSeqs('downsell-geral');
+  renderSeqs('downsell-pix');
+  renderPacks();
+  renderPgButtons();
+
+  // Fill text fields
+  document.getElementById('bv-msg').value = state.boasvindas.msg || '';
+  countChars(document.getElementById('bv-msg'), 'bv-count');
+  document.getElementById('pg-gerado-msg').value = state.pagamentos.gerado.msg || '';
+  document.getElementById('pg-aprovado-msg').value = state.pagamentos.aprovado.msg || '';
+  document.getElementById('cta-msg').value = state.pagamentos.gerado.cta_msg || '';
+
+  // Delivery
+  document.getElementById('delivery-url').value = state.delivery_url || '';
+
+  // Assinatura
+  if(state.assinatura.active) document.getElementById('toggle-assin').classList.add('on');
+
+  // Stats
+  updateStats();
+}
+
+// ── Bots ──────────────────────────────────────────────────
+function renderBotsList() {
+  const el = document.getElementById('bots-list');
+  if(!state.bots.length) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Nenhum bot vinculado. Adicione um abaixo.</div>';
+  } else {
+    el.innerHTML = state.bots.map((b,i) => `
+      <div class="bot-item">
+        <div class="bot-avatar">🤖</div>
+        <div class="bot-info">
+          <div class="bot-name">${b.name} ${i===0?'<span class="badge-principal">Principal</span>':''}</div>
+          <div class="bot-user">${b.username||'@'+b.name.toLowerCase().replace(/\s/g,'')}</div>
+        </div>
+        <div class="toggle ${b.active?'on':''}" onclick="toggleBotActive(${i})"></div>
+        <button class="btn btn-ghost btn-sm" onclick="removeBot(${i})" style="color:var(--danger);">🗑️</button>
+      </div>`).join('');
+  }
+  document.getElementById('bots-count').textContent = `${state.bots.length}/5 bot(s)`;
+  populateBotSelect();
+}
+
+function addBot() {
+  const sel = document.getElementById('add-bot-select');
+  const id  = sel.value; if(!id) { toast('Selecione um bot primeiro.','error'); return; }
+  const bot = allBots.find(b => b.id == id);
+  if(!bot) return;
+  state.bots.push({...bot, active: true});
+  renderBotsList(); markUnsaved();
+  toast(`Bot "${bot.name}" adicionado!`);
+}
+
+function removeBot(i) {
+  state.bots.splice(i, 1); renderBotsList(); markUnsaved();
+}
+
+function toggleBotActive(i) {
+  state.bots[i].active = !state.bots[i].active; renderBotsList(); markUnsaved();
+}
+
+async function refreshBots() { await loadBots(); toast('Bots atualizados!'); }
+
+// ── Planos ────────────────────────────────────────────────
+function renderPlanos() {
+  const el = document.getElementById('planos-list');
+  if(!state.planos.length) {
+    el.innerHTML = '<div class="empty-seq"><div class="ei">💳</div>Nenhum plano criado.<br>Clique em "+ Novo Plano"</div>';
+  } else {
+    el.innerHTML = state.planos.map((p, i) => `
+      <div class="plan-card">
+        <div class="plan-header">
+          <div class="plan-num">${i+1}</div>
+          <input class="plan-name-input" value="${p.name||'Plano '+(i+1)}" oninput="state.planos[${i}].name=this.value;markUnsaved()">
+          <div class="plan-actions">
+            <button class="btn btn-outline btn-sm" onclick="movePlano(${i},-1)">↑</button>
+            <button class="btn btn-outline btn-sm" onclick="movePlano(${i},1)">↓</button>
+            <button class="btn btn-danger btn-sm" onclick="removePlano(${i})">🗑️</button>
+          </div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label">Preço (R$)</label>
+            <input class="form-control" type="number" value="${p.price||''}" step="0.01" placeholder="29.90"
+              oninput="state.planos[${i}].price=this.value;markUnsaved()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gateway</label>
+            <select class="form-control" onchange="state.planos[${i}].gateway=this.value;markUnsaved()">
+              <option ${p.gateway=='TriboPay'?'selected':''}>TriboPay</option>
+              <option ${p.gateway=='Pushinpay'?'selected':''}>Pushinpay</option>
+              <option ${p.gateway=='SyncPay'?'selected':''}>SyncPay</option>
+              <option ${p.gateway=='MundPay'?'selected':''}>MundPay</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Entrega</label>
+            <select class="form-control" onchange="state.planos[${i}].delivery=this.value;markUnsaved()">
+              <option value="default" ${p.delivery=='default'?'selected':''}>Usar padrão</option>
+              <option value="link" ${p.delivery=='link'?'selected':''}>Link externo</option>
+              <option value="group" ${p.delivery=='group'?'selected':''}>Grupo/Canal</option>
+              <option value="msg" ${p.delivery=='msg'?'selected':''}>Mensagem</option>
+            </select>
+          </div>
+        </div>
+        ${p.delivery && p.delivery !== 'default' ? `
+        <div class="form-group">
+          <label class="form-label">${p.delivery==='link'?'URL':'Link do Grupo'}</label>
+          <input class="form-control" value="${p.delivery_url||''}" placeholder="https://..."
+            oninput="state.planos[${i}].delivery_url=this.value;markUnsaved()">
+        </div>` : ''}
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="toggle-label">Preço dinâmico por lead</div><div class="toggle-desc">Gera preço único por Telegram ID</div></div>
+          <div class="toggle ${p.dynamic?'on':''}" onclick="state.planos[${i}].dynamic=!state.planos[${i}].dynamic;renderPlanos();markUnsaved()"></div>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('planos-count').textContent = `${state.planos.length}/10`;
+}
+
+function addPlano() {
+  if(state.planos.length >= 10) { toast('Limite de 10 planos atingido.','error'); return; }
+  state.planos.push({ name:'Novo Plano', price:'', gateway:'TriboPay', delivery:'default', delivery_url:'', dynamic:false });
+  renderPlanos(); markUnsaved();
+}
+function removePlano(i) { state.planos.splice(i,1); renderPlanos(); markUnsaved(); }
+function movePlano(i, dir) {
+  const j = i + dir; if(j<0||j>=state.planos.length) return;
+  [state.planos[i],state.planos[j]]=[state.planos[j],state.planos[i]]; renderPlanos(); markUnsaved();
+}
+
+// ── Sequências (Upsell / Downsell) ───────────────────────
+function getSeqList(type) {
+  if(type==='upsell') return state.upsell.seqs;
+  if(type==='downsell-geral') return state.downsell.geral;
+  if(type==='downsell-pix') return state.downsell.pix;
+  return [];
+}
+function getSeqEl(type) {
+  if(type==='upsell') return 'upsell-seqs';
+  if(type==='downsell-geral') return 'downsell-geral-seqs';
+  if(type==='downsell-pix') return 'downsell-pix-seqs';
+}
+
+function renderSeqs(type) {
+  const list = getSeqList(type);
+  const elId = getSeqEl(type);
+  const el   = document.getElementById(elId); if(!el) return;
+  if(!list.length) {
+    el.innerHTML = `<div class="empty-seq"><div class="ei">📨</div>Nenhuma sequência.<br>Clique em "+ Nova Sequência"</div>`;
+    if(type==='upsell') document.getElementById('upsell-seq-count').textContent = '0/20';
+    return;
+  }
+  el.innerHTML = list.map((s, i) => `
+    <div class="seq-card">
+      <div class="seq-header">
+        <div class="seq-num">${i+1}</div>
+        <span style="font-size:13px;font-weight:600;">Sequência ${i+1}</span>
+        <span style="font-size:12px;color:var(--text-muted);margin-left:4px;">· Aguardar:</span>
+        <select class="delay-select" onchange="getSeqList('${type}')[${i}].delay=this.value;markUnsaved()">
+          ${['Imediato','5 min','15 min','30 min','1 hora','2 horas','6 horas','12 horas','1 dia','2 dias','3 dias','7 dias']
+            .map(d=>`<option ${s.delay===d?'selected':''}>${d}</option>`).join('')}
+        </select>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);" onclick="removeSeq('${type}',${i})">🗑️</button>
+      </div>
+      <div class="rich-toolbar">
+        <button class="rich-btn"><b>B</b></button><button class="rich-btn"><i>I</i></button>
+        <button class="rich-btn">&lt;&gt;</button>
+      </div>
+      <textarea class="rich-area" style="min-height:80px;" placeholder="Ei {nome}, ainda está aqui? 👀"
+        oninput="getSeqList('${type}')[${i}].msg=this.value;markUnsaved()">${s.msg||''}</textarea>
+      <div class="var-tags" style="margin-top:6px;">
+        <span class="var-tag" onclick="insertVarSeq('${type}',${i},'{nome}')">&#123;nome&#125;</span>
+        <span class="var-tag" onclick="insertVarSeq('${type}',${i},'{plano}')">&#123;plano&#125;</span>
+        <span class="var-tag" onclick="insertVarSeq('${type}',${i},'{valor}')">&#123;valor&#125;</span>
+      </div>
+    </div>`).join('');
+  if(type==='upsell') document.getElementById('upsell-seq-count').textContent = `${list.length}/20`;
+}
+
+function addSeq(type) {
+  const list = getSeqList(type);
+  const max  = type==='upsell' ? 20 : 50;
+  if(list.length >= max) { toast(`Limite de ${max} sequências.`,'error'); return; }
+  list.push({ delay:'Imediato', msg:'' });
+  renderSeqs(type); markUnsaved();
+}
+function removeSeq(type, i) { getSeqList(type).splice(i,1); renderSeqs(type); markUnsaved(); }
+function insertVarSeq(type, i, v) {
+  // Simple insert at end
+  getSeqList(type)[i].msg = (getSeqList(type)[i].msg||'') + v;
+  renderSeqs(type); markUnsaved();
+}
+
+// ── Packs ─────────────────────────────────────────────────
+function renderPacks() {
+  const el = document.getElementById('packs-list');
+  if(!state.packs.length) {
+    el.innerHTML = '<div class="empty-seq"><div class="ei">📦</div>Nenhum pack criado.</div>'; return;
+  }
+  el.innerHTML = state.packs.map((p,i) => `
+    <div class="plan-card">
+      <div class="plan-header">
+        <div class="plan-num">${i+1}</div>
+        <input class="plan-name-input" value="${p.name||'Pack '+(i+1)}" oninput="state.packs[${i}].name=this.value;markUnsaved()">
+        <div class="plan-actions">
+          <button class="btn btn-danger btn-sm" onclick="state.packs.splice(${i},1);renderPacks();markUnsaved()">🗑️</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Preço (R$)</label>
+          <input class="form-control" type="number" value="${p.price||''}" placeholder="49.90"
+            oninput="state.packs[${i}].price=this.value;markUnsaved()"></div>
+        <div class="form-group"><label class="form-label">Gateway</label>
+          <select class="form-control" onchange="state.packs[${i}].gateway=this.value;markUnsaved()">
+            <option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+          </select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Descrição</label>
+        <textarea class="form-control" rows="2" placeholder="Descrição do pack..."
+          oninput="state.packs[${i}].desc=this.value;markUnsaved()">${p.desc||''}</textarea></div>
+      <div class="form-group"><label class="form-label">Link de Entrega</label>
+        <input class="form-control" value="${p.delivery||''}" placeholder="https://..."
+          oninput="state.packs[${i}].delivery=this.value;markUnsaved()"></div>
+    </div>`).join('');
+}
+function addPack() {
+  state.packs.push({name:'',price:'',gateway:'TriboPay',desc:'',delivery:''});
+  renderPacks(); markUnsaved();
+}
+
+// ── Pagamentos botões ─────────────────────────────────────
+function renderPgButtons() {
+  renderButtonList('pg-buttons-list', state.pagamentos.gerado.buttons, 'gerado');
+  renderButtonList('pg-aprov-buttons-list', state.pagamentos.aprovado.buttons, 'aprovado');
+}
+function renderButtonList(elId, buttons, type) {
+  const el = document.getElementById(elId); if(!el) return;
+  el.innerHTML = buttons.map((b,i) => `
+    <div style="display:flex;gap:6px;align-items:center;background:var(--bg-elevated);padding:8px 10px;border-radius:var(--radius-sm);">
+      <input style="flex:1;background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text-primary);outline:none;font-size:13px;font-family:inherit;" 
+        placeholder="Texto do botão" value="${b.text||''}" oninput="state.pagamentos.${type}.buttons[${i}].text=this.value;markUnsaved()">
+      <span style="color:var(--border);">|</span>
+      <input style="flex:1.5;background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text-muted);outline:none;font-size:12px;font-family:inherit;"
+        placeholder="URL (opcional)" value="${b.url||''}" oninput="state.pagamentos.${type}.buttons[${i}].url=this.value;markUnsaved()">
+      <button onclick="state.pagamentos.${type}.buttons.splice(${i},1);renderPgButtons();markUnsaved()"
+        style="background:none;border:none;cursor:pointer;color:var(--danger);">✕</button>
+    </div>`).join('');
+}
+function addPgButton(type) {
+  state.pagamentos[type].buttons.push({text:'',url:''});
+  renderPgButtons(); markUnsaved();
+}
+
+// ── Delivery ──────────────────────────────────────────────
+let selectedDelivery = 'link';
+function selectDelivery(el, type) {
+  document.querySelectorAll('.delivery-opt').forEach(d => d.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedDelivery = type;
+  const input = document.getElementById('delivery-url');
+  if(type==='link') input.placeholder = 'https://t.me/...';
+  else if(type==='group') input.placeholder = 'https://t.me/joinchat/...';
+  else input.placeholder = 'Mensagem de entrega...';
+  markUnsaved();
+}
+
+// ── Tabs ──────────────────────────────────────────────────
+function switchTab(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+id)?.classList.add('active');
+  el.classList.add('active');
+}
+function switchDsTab(tab) {
+  const isGeral = tab === 'geral';
+  document.getElementById('ds-panel-geral').style.display = isGeral ? 'block' : 'none';
+  document.getElementById('ds-panel-pix').style.display  = isGeral ? 'none' : 'block';
+  document.getElementById('ds-tab-geral').className = isGeral ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+  document.getElementById('ds-tab-pix').className   = isGeral ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm';
+  document.getElementById('ds-desc').textContent = isGeral
+    ? 'Sequências enviadas após o /start para todos os leads que não compraram.'
+    : 'Ative o "PIX Gerado" para diferenciar quem gerou pagamento mas não pagou.';
+}
+function switchPgTab(tab) {
+  document.getElementById('pg-panel-gerado').style.display   = tab==='gerado' ? 'block' : 'none';
+  document.getElementById('pg-panel-aprovado').style.display = tab==='aprovado' ? 'block' : 'none';
+  document.getElementById('pg-tab-gerado').className   = tab==='gerado' ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+  document.getElementById('pg-tab-aprovado').className = tab==='aprovado' ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
+}
+
+// ── Toggles ───────────────────────────────────────────────
+function toggleMidia() {
+  const on = document.getElementById('toggle-midia').classList.contains('on');
+  document.getElementById('midia-box').style.display = on ? 'block' : 'none';
+  state.boasvindas.midia = on; markUnsaved();
+}
+function toggleOrderBump() {
+  const on = document.getElementById('toggle-ob').classList.contains('on');
+  document.getElementById('ob-config').style.display = on ? 'block' : 'none';
+  state.orderbump.active = on; markUnsaved();
+}
+function toggleAssinatura() {
+  const on = document.getElementById('toggle-assin').classList.contains('on');
+  document.getElementById('assin-config').style.display = on ? 'block' : 'none';
+  state.assinatura.active = on; markUnsaved();
+}
+
+// ── Rich Text helpers ─────────────────────────────────────
+function fmt(type) {
+  const focused = document.activeElement;
+  if(!focused || (focused.tagName !== 'TEXTAREA' && !focused.isContentEditable)) return;
+  const map = { bold:'**', italic:'_', underline:'__', strikethrough:'~~', code:'`' };
+  if(map[type]) {
+    const start = focused.selectionStart, end = focused.selectionEnd;
+    const sel   = focused.value.substring(start, end);
+    const m     = map[type];
+    focused.setRangeText(`${m}${sel}${m}`, start, end, 'select');
+  }
+  if(type === 'emoji') { focused.setRangeText('😊', focused.selectionStart, focused.selectionEnd, 'end'); }
+}
+function insertVar(id, v) {
+  const el = document.getElementById(id); if(!el) return;
+  const s = el.selectionStart, e = el.selectionEnd;
+  el.setRangeText(v, s, e, 'end');
+  el.focus(); countChars(el, id==='bv-msg'?'bv-count':id==='pg-gerado-msg'?'pg-gerado-count':'pg-aprov-count');
+  markUnsaved();
+}
+function countChars(el, countId) {
+  const c = document.getElementById(countId); if(c) c.textContent = el.value.length;
+  markUnsaved();
+}
+
+// ── Lang ──────────────────────────────────────────────────
+function setLang(lang, el) {
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  state.lang = lang;
+}
+
+// ── Stats ─────────────────────────────────────────────────
+async function updateStats() {
+  if(!FUNIL_ID) return;
+  // Stats virão do Supabase quando integrado com o bot
+  document.getElementById('stat-leads').textContent = '0';
+  document.getElementById('stat-pix').textContent   = '0';
+  document.getElementById('stat-conv').textContent  = '0%';
+  document.getElementById('stat-rev').textContent   = 'R$ 0,00';
+}
+
+// ── Save ──────────────────────────────────────────────────
+async function saveFunil() {
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '⏳ Salvando...';
+  btn.disabled = true;
+
+  // Collect state from DOM
+  state.name = document.getElementById('funil-title-input').value.trim() || 'Meu Funil';
+  state.boasvindas.msg = document.getElementById('bv-msg').value;
+  state.boasvindas.midia_url = document.getElementById('midia-url').value;
+  state.delivery_url = document.getElementById('delivery-url').value;
+  state.pagamentos.gerado.msg     = document.getElementById('pg-gerado-msg').value;
+  state.pagamentos.gerado.cta_msg = document.getElementById('cta-msg').value;
+  state.pagamentos.aprovado.msg   = document.getElementById('pg-aprovado-msg').value;
+  state.orderbump.name     = document.getElementById('ob-name')?.value || '';
+  state.orderbump.price    = document.getElementById('ob-price')?.value || '';
+  state.orderbump.desc     = document.getElementById('ob-desc')?.value || '';
+  state.orderbump.delivery = document.getElementById('ob-delivery')?.value || '';
+  state.assinatura.msg     = document.getElementById('assin-msg')?.value || '';
+
+  const payload = { name: state.name, config: state, updated_at: new Date().toISOString() };
+
+  try {
+    let res;
+    if(FUNIL_ID) {
+      res = await fetch(`${SUPA_URL}/rest/v1/funnels?id=eq.${FUNIL_ID}`, {
+        method: 'PATCH',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(`${SUPA_URL}/rest/v1/funnels`, {
+        method: 'POST',
+        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify(payload)
+      });
+    }
+    if(res.ok || res.status === 204) {
+      btn.textContent = '✅ Salvo!'; btn.className = 'save-btn saved';
+      unsaved = false;
+      setTimeout(() => { btn.textContent = '💾 Salvar Configuração'; btn.className = 'save-btn'; btn.disabled = false; }, 2000);
+      toast('Configurações salvas na nuvem! ☁️');
+    } else {
+      throw new Error('HTTP ' + res.status);
+    }
+  } catch(e) {
+    btn.textContent = '💾 Salvar Configuração'; btn.disabled = false;
+    toast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+
+function markUnsaved() { unsaved = true; }
+window.addEventListener('beforeunload', e => { if(unsaved) { e.preventDefault(); e.returnValue=''; } });
+
+// ── Toast ─────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${type==='success'?'✅':'❌'}</span> ${msg}`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Start ─────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
