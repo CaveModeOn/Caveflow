@@ -1717,27 +1717,30 @@ textarea.form-control { resize: vertical; min-height: 80px; }
         <div id="tt-monitor" class="tt-panel" style="display:none;">
           <div class="card">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-              <span class="status-dot online"></span>
+              <span class="status-dot offline"></span>
               <span style="font-size:14px;font-weight:600;">Monitoramento em tempo real</span>
-              <span class="badge badge-success">Ativo</span>
+              <span class="badge badge-muted">Aguardando pixel</span>
             </div>
             <div class="grid-4">
               <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
                 <div style="font-size:11px;color:var(--text-muted);">Pixel Fires/hora</div>
-                <div style="font-size:24px;font-weight:800;color:var(--accent);margin-top:4px;">1.284</div>
+                <div style="font-size:24px;font-weight:800;color:var(--text-muted);margin-top:4px;" id="tt-pixel-fires">—</div>
               </div>
               <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
                 <div style="font-size:11px;color:var(--text-muted);">Events API/hora</div>
-                <div style="font-size:24px;font-weight:800;color:var(--success);margin-top:4px;">847</div>
+                <div style="font-size:24px;font-weight:800;color:var(--text-muted);margin-top:4px;" id="tt-events-api">—</div>
               </div>
               <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
                 <div style="font-size:11px;color:var(--text-muted);">Match Rate</div>
-                <div style="font-size:24px;font-weight:800;color:var(--warning);margin-top:4px;">78.4%</div>
+                <div style="font-size:24px;font-weight:800;color:var(--text-muted);margin-top:4px;" id="tt-match-rate">—</div>
               </div>
               <div style="background:var(--bg-elevated);border-radius:var(--radius);padding:16px;">
                 <div style="font-size:11px;color:var(--text-muted);">Erros</div>
-                <div style="font-size:24px;font-weight:800;color:var(--danger);margin-top:4px;">3</div>
+                <div style="font-size:24px;font-weight:800;color:var(--text-muted);margin-top:4px;" id="tt-errors">—</div>
               </div>
+            </div>
+            <div style="margin-top:16px;padding:14px;background:var(--bg-elevated);border-radius:var(--radius);font-size:13px;color:var(--text-muted);text-align:center;">
+              Configure uma conta TikTok com Pixel ID e Access Token para ativar o monitoramento.
             </div>
           </div>
         </div>
@@ -2607,9 +2610,7 @@ async function finishDisparoCloud(name, total, seg, msg) {
     revenue: conv * 247
   });
   // histórico local
-  const hist = DB._get('camp_history') || [];
-  hist.unshift({id: camp?.id||Date.now(), name, type:'Imediato', sent:total, opened:opens, clicked:Math.round(opens*0.44), conv, revenue:conv*247, date:new Date().toISOString().split('T')[0], status:'done'});
-  DB._set('camp_history', hist);
+  // histórico salvo no Supabase via finishDisparoCloud
   // camps local
   const camps = DB._get('campaigns') || [];
   camps.push({id: camp?.id||Date.now(), name, type:'Imediato', bot:'Bot Vendas Principal', seg, status:'active', sent:total, opens, conv});
@@ -2919,14 +2920,22 @@ function initTrackingCharts(rows) {
 
 function initTikTokChart() {
   destroyChart('tiktokChart');
-  const labels=['01/06','03/06','05/06','07/06','09/06','11/06'];
+  // Dados reais virão da TikTok Events API quando integrada
+  const labels = ['Sem dados'];
   charts.tiktokChart = new Chart(document.getElementById('chartTikTok'),{
     type:'line',
-    data:{labels,datasets:[
-      {label:'Impressões',data:[14000,18200,16800,22000,19400,24800],borderColor:'#6c63ff',tension:0.4,fill:false},
-      {label:'Cliques',data:[840,1100,980,1420,1280,1640],borderColor:'#00d4aa',tension:0.4,fill:false}
+    data:{labels, datasets:[
+      {label:'Impressões',data:[0],borderColor:'#6c63ff',tension:0.4,fill:false},
+      {label:'Cliques',   data:[0],borderColor:'#00d4aa',tension:0.4,fill:false}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}}
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{labels:{color:'#8b90a7',font:{size:11}}},
+        title:{display:true,text:'Configure uma conta TikTok para ver os dados reais',color:'#555b75',font:{size:12}}
+      },
+      scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}
+    }
   });
 }
 
@@ -3268,10 +3277,7 @@ let dispButtons = [];
 let disproInterval = null;
 let seqSteps = [];
 
-const audienceCounts = {
-  todos:6283, compradores:1126, nao_compradores:5157, pix_pendente:847,
-  pix_pago:1126, tag:482, bot:3241, pais:4100, idioma:5920
-};
+// audienceCounts removido — contagem vem do Supabase
 
 function switchCampTab(el, panelId) {
   document.querySelectorAll('#page-campaigns .tab').forEach(t => t.classList.remove('active'));
@@ -3663,37 +3669,63 @@ function saveSeq() {
 }
 
 // ── Charts campanhas ──
-function initCampCharts() {
+async function initCampCharts() {
   destroyChart('campPerf'); destroyChart('campConv');
-  const hist = DB.get('camp_history') || [];
-  const labels = hist.slice(0,5).map(h=>h.name.substring(0,12)+'...');
+
+  let hist = [];
+  if(currentUser) {
+    const { data } = await supa.from('campaigns')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .eq('status', 'done')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    hist = (data||[]).map(c => ({
+      name:    c.name,
+      type:    c.type === 'immediate' ? 'Imediato' : c.type === 'scheduled' ? 'Agendado' : 'Sequência',
+      sent:    c.sent_count  || 0,
+      opened:  c.open_count  || 0,
+      clicked: c.click_count || 0,
+      conv:    c.conv_count  || 0,
+      revenue: Number(c.revenue || 0),
+      date:    c.created_at?.split('T')[0] || '—'
+    }));
+  }
+
   const cfg = {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b90a7',font:{size:11}}}},scales:{x:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}},y:{ticks:{color:'#555b75'},grid:{color:'#1e2030'}}}};
+  const labels = hist.slice(0,5).map(h=>h.name.substring(0,12)+'...');
+
   charts.campPerf = new Chart(document.getElementById('chartCampPerf'),{
-    type:'bar', data:{labels, datasets:[
-      {label:'Enviados',data:hist.slice(0,5).map(h=>h.sent),backgroundColor:'rgba(108,99,255,0.5)',borderRadius:4},
-      {label:'Abertos',data:hist.slice(0,5).map(h=>h.opened),backgroundColor:'rgba(0,212,170,0.5)',borderRadius:4}
+    type:'bar', data:{labels: labels.length ? labels : ['Sem dados'], datasets:[
+      {label:'Enviados', data: hist.slice(0,5).map(h=>h.sent)||[0],  backgroundColor:'rgba(108,99,255,0.5)',borderRadius:4},
+      {label:'Abertos',  data: hist.slice(0,5).map(h=>h.opened)||[0],backgroundColor:'rgba(0,212,170,0.5)',borderRadius:4}
     ]}, options:cfg
   });
   charts.campConv = new Chart(document.getElementById('chartCampConv'),{
-    type:'line', data:{labels, datasets:[
-      {label:'Conversões',data:hist.slice(0,5).map(h=>h.conv),borderColor:'#6c63ff',tension:0.4,fill:false},
-      {label:'Receita (R$)',data:hist.slice(0,5).map(h=>h.revenue),borderColor:'#00d4aa',tension:0.4,fill:false,yAxisID:'y1'}
+    type:'line', data:{labels: labels.length ? labels : ['Sem dados'], datasets:[
+      {label:'Conversões',data:hist.slice(0,5).map(h=>h.conv)||[0],  borderColor:'#6c63ff',tension:0.4,fill:false},
+      {label:'Receita',   data:hist.slice(0,5).map(h=>h.revenue)||[0],borderColor:'#00d4aa',tension:0.4,fill:false,yAxisID:'y1'}
     ]}, options:{...cfg,scales:{...cfg.scales,y1:{position:'right',ticks:{color:'#555b75'},grid:{drawOnChartArea:false}}}}
   });
 
-  // Render history table
-  document.getElementById('camp-history-tbody').innerHTML = hist.map(h=>`
-    <tr>
-      <td style="font-weight:600;">${h.name}</td>
-      <td><span class="badge badge-muted">${h.type}</span></td>
-      <td>${h.sent.toLocaleString()}</td>
-      <td>${h.opened.toLocaleString()} <span style="color:var(--text-muted);font-size:11px;">(${Math.round(h.opened/h.sent*100)}%)</span></td>
-      <td>${h.clicked.toLocaleString()}</td>
-      <td style="color:var(--success);font-weight:600;">${h.conv.toLocaleString()}</td>
-      <td style="color:var(--accent);font-weight:700;">R$ ${h.revenue.toLocaleString()}</td>
-      <td style="color:var(--text-muted);">${h.date}</td>
-      <td><span class="badge badge-success">Concluída</span></td>
-    </tr>`).join('');
+  // Tabela histórico
+  document.getElementById('camp-history-tbody').innerHTML = hist.length
+    ? hist.map(h=>`
+        <tr>
+          <td style="font-weight:600;">${h.name}</td>
+          <td><span class="badge badge-muted">${h.type}</span></td>
+          <td>${h.sent.toLocaleString('pt-BR')}</td>
+          <td>${h.opened.toLocaleString('pt-BR')} <span style="color:var(--text-muted);font-size:11px;">(${h.sent?Math.round(h.opened/h.sent*100):0}%)</span></td>
+          <td>${h.clicked.toLocaleString('pt-BR')}</td>
+          <td style="color:var(--success);font-weight:600;">${h.conv.toLocaleString('pt-BR')}</td>
+          <td style="color:var(--accent);font-weight:700;">${brl(h.revenue)}</td>
+          <td style="color:var(--text-muted);">${h.date}</td>
+          <td><span class="badge badge-success">Concluída</span></td>
+        </tr>`).join('')
+    : `<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:32px;">
+        Nenhum disparo concluído ainda.<br>
+        <span style="font-size:12px;">Seus disparos aparecerão aqui após serem enviados.</span>
+       </td></tr>`;
 }
 
 // ═══════════════════════════════════════════════
@@ -4075,30 +4107,42 @@ async function renderTikTokContas() {
       </div>
     </div>`).join('') : `<div class="empty-state"><div class="empty-icon">🎵</div><h3>Nenhuma conta conectada</h3></div>`;
 }
-function renderTikTokDominios() {
-  const doms=[{id:1,domain:'meusite.com.br',status:'verified',conta:'TikTok Ads BR'}];
-  document.getElementById('tiktok-dominios-list').innerHTML = doms.map(d=>`
-    <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
-      <div style="font-size:18px;">🌐</div>
-      <div style="flex:1;"><div style="font-weight:600;">${d.domain}</div><div style="font-size:12px;color:var(--text-muted);">${d.conta}</div></div>
-      <span class="badge badge-success">✓ Verificado</span>
-      <button class="btn btn-danger btn-sm">🗑️</button>
-    </div>`).join('');
+async function renderTikTokDominios() {
+  // Domínios virão do Supabase futuramente
+  // Por enquanto mostra estado vazio real
+  document.getElementById('tiktok-dominios-list').innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">🌐</div>
+      <h3>Nenhum domínio verificado</h3>
+      <p>Adicione um domínio para ativar o TikTok Pixel</p>
+    </div>`;
 }
-function renderTikTokLinks() {
-  const links=[
-    {link:'fgm.io/tt1',conta:'TikTok Ads BR',camp:'Black Friday',cliques:4840,conv:'12.4%',receita:'R$ 28.400'},
-    {link:'fgm.io/tt2',conta:'TikTok Ads BR',camp:'Recuperação',cliques:2100,conv:'8.1%',receita:'R$ 11.200'}
-  ];
-  document.getElementById('tiktok-links-tbody').innerHTML = links.map(l=>`
-    <tr>
-      <td style="color:var(--accent);font-weight:600;">${l.link}</td>
-      <td>${l.conta}</td>
-      <td>${l.camp}</td>
-      <td>${l.cliques.toLocaleString()}</td>
-      <td><span class="badge badge-success">${l.conv}</span></td>
-      <td style="font-weight:600;color:var(--success);">${l.receita}</td>
-    </tr>`).join('');
+async function renderTikTokLinks() {
+  // Links de campanha virão dos redirects com UTM do TikTok
+  let links = [];
+  if(currentUser) {
+    const { data } = await supa.from('redirects')
+      .select('*').eq('user_id', currentUser.id)
+      .order('clicks', { ascending: false })
+      .limit(20);
+    links = data || [];
+  }
+
+  document.getElementById('tiktok-links-tbody').innerHTML = links.length
+    ? links.map(l=>`
+        <tr>
+          <td style="color:var(--accent);font-weight:600;">flowgram.io/${l.slug}</td>
+          <td>—</td>
+          <td>—</td>
+          <td>${(l.clicks||0).toLocaleString('pt-BR')}</td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td style="color:var(--text-muted);">—</td>
+        </tr>`)
+      .join('')
+    : `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px;">
+        Nenhum link criado ainda.<br>
+        <span style="font-size:12px;">Crie redirects na aba Redirects e eles aparecerão aqui.</span>
+       </td></tr>`;
 }
 function saveTikTokConta() {
   const name=document.getElementById('tt-conta-name').value.trim();
