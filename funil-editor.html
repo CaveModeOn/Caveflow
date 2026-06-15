@@ -340,7 +340,8 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
 <!-- TOPBAR -->
 <header class="topbar">
   <div class="topbar-left">
-    <a href="javascript:history.back()" class="back-btn">← Voltar</a>
+    <a href="index.html" class="back-btn">🏠 Início</a>
+    <a onclick="goBack()" class="back-btn" style="cursor:pointer;">← Voltar</a>
     <div class="funil-title">
       <input type="text" id="funil-title-input" value="Meu Funil de Vendas" oninput="markUnsaved()">
     </div>
@@ -1571,6 +1572,18 @@ async function saveFunil() {
 }
 
 function markUnsaved() { unsaved = true; }
+
+function goBack() {
+  if(unsaved) {
+    if(!confirm('Tem alterações não salvas. Deseja sair mesmo assim?')) return;
+  }
+  if(document.referrer && document.referrer.includes(location.hostname)) {
+    history.back();
+  } else {
+    location.href = 'index.html';
+  }
+}
+
 window.addEventListener('beforeunload', e => { if(unsaved) { e.preventDefault(); e.returnValue=''; } });
 
 // ── Toast ─────────────────────────────────────────────────
