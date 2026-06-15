@@ -694,10 +694,25 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
 
 <div class="toast-container" id="toast-container"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// ── State ──────────────────────────────────────────────────
+// ── Supabase Client ────────────────────────────────────────
 const SUPA_URL = 'https://gqaaupjhcyptbwctkxlu.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdxYWF1cGpoY3lwdGJ3Y3RreGx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0MjcxMzEsImV4cCI6MjA5NzAwMzEzMX0.W_vY4ey-ya8G9fVbRg-LOLWbs0CJddnfGzZDjPOvkHg';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+
+// Auth headers — usa o token da sessão ativa do SDK
+async function getAuthHeaders() {
+  const { data: { session } } = await supa.auth.getSession();
+  const token = session?.access_token || SUPA_KEY;
+  return {
+    'apikey': SUPA_KEY,
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+}
 
 // Get funil ID from URL params
 const params = new URLSearchParams(location.search);
@@ -733,26 +748,61 @@ async function init() {
 
 async function loadBots() {
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/bots?select=*&order=created_at.asc`, {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
-    });
-    allBots = await res.json() || [];
-    populateBotSelect();
-  } catch(e) { console.error('loadBots', e); }
+    // Verificar sessão
+    const { data: { session } } = await supa.auth.getSession();
+    if(!session) {
+      showNoAuthWarning();
+      document.getElementById('add-bot-select').innerHTML = '<option value="">⚠️ Faça login no painel principal primeiro</option>';
+      return;
+    }
+    currentUser = session.user;
+
+    // Buscar bots do usuário logado
+    const { data, error } = await supa.from('bots')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: true });
+
+    if(error) { console.error('loadBots', error); allBots = []; return; }
+
+    allBots = data || [];
+    if(allBots.length === 0) {
+      document.getElementById('add-bot-select').innerHTML = '<option value="">Nenhum bot cadastrado — crie um no painel</option>';
+    } else {
+      populateBotSelect();
+      toast(`${allBots.length} bot(s) carregado(s)`);
+    }
+  } catch(e) {
+    console.error('loadBots', e);
+    allBots = [];
+  }
+}
+
+function showNoAuthWarning() {
+  if(document.getElementById('no-auth-warning')) return;
+  const warn = document.createElement('div');
+  warn.id = 'no-auth-warning';
+  warn.style.cssText = 'background:rgba(255,179,71,0.1);border:1px solid rgba(255,179,71,0.3);border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13px;color:#ffb347;display:flex;align-items:center;gap:10px;';
+  warn.innerHTML = `
+    <span style="font-size:20px;">⚠️</span>
+    <div>
+      <strong>Você não está logado.</strong><br>
+      <span style="font-size:12px;opacity:0.8;">Faça login no painel principal e abra o editor novamente.</span>
+    </div>
+    <a href="index.html" style="margin-left:auto;padding:6px 14px;background:#ffb347;color:#000;border-radius:6px;font-weight:600;text-decoration:none;font-size:12px;">Ir para o Painel</a>`;
+  document.querySelector('.content').prepend(warn);
 }
 
 async function loadFunil() {
   try {
-    const res = await fetch(`${SUPA_URL}/rest/v1/funnels?id=eq.${FUNIL_ID}&select=*`, {
-      headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` }
-    });
-    const data = await res.json();
-    if(data?.[0]) {
-      const f = data[0];
-      document.getElementById('funil-title-input').value = f.name || 'Meu Funil';
-      if(f.config) Object.assign(state, f.config);
+    const { data, error } = await supa.from('funnels')
+      .select('*').eq('id', FUNIL_ID).single();
+    if(error) { console.error('loadFunil', error); return; }
+    if(data) {
+      document.getElementById('funil-title-input').value = data.name || 'Meu Funil';
+      if(data.config) Object.assign(state, data.config);
       state.id = FUNIL_ID;
-      state.name = f.name;
+      state.name = data.name;
     }
   } catch(e) { console.error('loadFunil', e); }
 }
@@ -1146,13 +1196,13 @@ async function saveFunil() {
     if(FUNIL_ID) {
       res = await fetch(`${SUPA_URL}/rest/v1/funnels?id=eq.${FUNIL_ID}`, {
         method: 'PATCH',
-        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        headers: { ...getAuthHeaders(), 'Prefer': 'return=minimal' },
         body: JSON.stringify(payload)
       });
     } else {
       res = await fetch(`${SUPA_URL}/rest/v1/funnels`, {
         method: 'POST',
-        headers: { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        headers: { ...getAuthHeaders(), 'Prefer': 'return=representation' },
         body: JSON.stringify(payload)
       });
     }
