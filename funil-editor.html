@@ -275,6 +275,55 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
 }
 .pix-var:hover { background: rgba(0,212,170,0.2); }
 
+/* ── UPLOAD MÍDIA ── */
+.upload-area {
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px 20px;
+  text-align: center; cursor: pointer; transition: var(--transition); position: relative;
+  background: var(--bg-elevated);
+}
+.upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: var(--accent-glow); }
+.upload-area input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-preview {
+  width: 100%; max-height: 200px; object-fit: cover; border-radius: var(--radius-sm);
+  margin-top: 10px; display: block;
+}
+.upload-progress {
+  height: 4px; background: var(--border); border-radius: 99px; margin-top: 8px; overflow: hidden; display: none;
+}
+.upload-progress-fill { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s; }
+.channel-info {
+  background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.2);
+  border-radius: var(--radius-sm); padding: 10px 12px; font-size: 12px; color: var(--text-secondary);
+  margin-top: 8px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ── UPSELL PLAN CARD ── */
+.upsell-plan-card {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+}
+.upsell-plan-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+
+/* ── DOWNSELL MSG CARD ── */
+.ds-msg-card {
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+  position: relative;
+}
+.ds-header-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.ds-badge-discount {
+  padding: 3px 10px; background: rgba(0,212,170,0.15); border: 1px solid rgba(0,212,170,0.25);
+  border-radius: 99px; font-size: 11px; font-weight: 700; color: var(--success);
+}
+.ds-badge-time {
+  padding: 3px 10px; background: rgba(108,99,255,0.12); border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 99px; font-size: 11px; color: var(--accent);
+}
+.discount-select, .time-select {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text-primary); padding: 5px 10px; font-size: 12px; outline: none; font-family: inherit;
+}
+
 /* ── TOAST ── */
 .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
 .toast {
@@ -360,18 +409,40 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
         <div class="toggle" id="toggle-midia" onclick="this.classList.toggle('on');toggleMidia()"></div>
       </div>
 
-      <div id="midia-box" style="display:none;margin:12px 0;">
+      <div id="midia-box" style="display:none;margin:14px 0 4px;">
         <div class="form-group">
           <label class="form-label">Tipo de mídia</label>
-          <select class="form-control" id="midia-type">
-            <option value="image">🖼️ Imagem</option>
-            <option value="video">🎬 Vídeo</option>
-          </select>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm midia-type-btn active" data-type="image" onclick="selectMidiaType(this)">🖼️ Imagem</button>
+            <button class="btn btn-outline btn-sm midia-type-btn" data-type="video" onclick="selectMidiaType(this)">🎬 Vídeo</button>
+          </div>
         </div>
         <div class="form-group">
-          <label class="form-label">URL da mídia</label>
-          <input class="form-control" id="midia-url" placeholder="https://...">
+          <label class="form-label">Arquivo de mídia</label>
+          <div class="upload-area" id="midia-upload-area" ondragover="this.classList.add('dragover');event.preventDefault()" ondragleave="this.classList.remove('dragover')" ondrop="handleMidiaDropped(event)">
+            <input type="file" id="midia-file-input" accept="image/*,video/*" onchange="handleMidiaFile(this.files[0])">
+            <div id="midia-upload-placeholder">
+              <div style="font-size:28px;margin-bottom:8px;">📎</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary);">Clique ou arraste o arquivo aqui</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">JPG, PNG, GIF, MP4 — máx. 20MB</div>
+            </div>
+            <img id="midia-preview-img" class="upload-preview" style="display:none;">
+            <video id="midia-preview-vid" class="upload-preview" style="display:none;" controls muted></video>
+          </div>
+          <div class="upload-progress" id="midia-upload-progress">
+            <div class="upload-progress-fill" id="midia-progress-fill" style="width:0%"></div>
+          </div>
+          <div id="midia-file-info" style="display:none;margin-top:8px;display:none;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);">
+            <span id="midia-file-name"></span>
+            <button onclick="clearMidiaFile()" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:14px;">✕</button>
+          </div>
+          <div class="channel-info" id="midia-channel-info" style="display:none;">
+            <span>📢</span>
+            <span>Mídia enviada para o canal de registro do bot e armazenada no Supabase Storage.</span>
+          </div>
         </div>
+        <input type="hidden" id="midia-url" value="">
+        <input type="hidden" id="midia-type" value="image">
       </div>
 
       <div class="form-group" style="margin-top:14px;">
@@ -467,11 +538,63 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
       </div>
     </div>
 
+    <!-- Plano do Upsell -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:4px;">💳 Plano do Upsell</div>
+      <div class="card-sub">Oferta apresentada após a compra principal</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nome da Oferta <span class="req">*</span></label>
+          <input class="form-control" id="upsell-plan-name" placeholder="Ex: Pack VIP Completo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preço (R$) <span class="req">*</span></label>
+          <input class="form-control" id="upsell-plan-price" type="number" placeholder="97.00" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Gateway</label>
+          <select class="form-control" id="upsell-plan-gateway">
+            <option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de Entrega</label>
+          <select class="form-control" id="upsell-plan-delivery-type" onchange="toggleUpsellDelivery()">
+            <option value="link">🔗 Link Externo</option>
+            <option value="group">👥 Grupo/Canal Telegram</option>
+            <option value="msg">💬 Mensagem</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Entregável</label>
+        <input class="form-control" id="upsell-plan-delivery" placeholder="https://t.me/...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mensagem da Oferta</label>
+        <div class="rich-toolbar">
+          <button class="rich-btn"><b>B</b></button>
+          <button class="rich-btn"><i>I</i></button>
+          <button class="rich-btn">&lt;&gt;</button>
+        </div>
+        <textarea class="rich-area" id="upsell-plan-msg" rows="4" oninput="countChars(this,'upsell-msg-count')" placeholder="🔥 Oferta especial para você!&#10;&#10;Por ser nosso cliente, temos um benefício exclusivo..."></textarea>
+        <div class="char-count"><span id="upsell-msg-count">0</span>/4000</div>
+        <div class="var-tags" style="margin-top:6px;">
+          <span class="var-tag" onclick="insertVar('upsell-plan-msg','{nome}')">&#123;nome&#125;</span>
+          <span class="var-tag" onclick="insertVar('upsell-plan-msg','{valor}')">&#123;valor&#125;</span>
+          <span class="var-tag" onclick="insertVar('upsell-plan-msg','{plano}')">&#123;plano&#125;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sequências de Upsell -->
     <div class="card">
       <div class="section-hdr">
         <div>
-          <h3>Sequências de Upsell</h3>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="upsell-seq-count">0/20</div>
+          <h3>Sequências de Follow-up</h3>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="upsell-seq-count">0/20 — enviadas após a oferta principal</div>
         </div>
         <button class="btn btn-primary btn-sm" onclick="addSeq('upsell')">+ Nova Sequência</button>
       </div>
@@ -481,31 +604,38 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
 
   <!-- ── DOWNSELL ── -->
   <div class="panel" id="panel-downsell">
-    <div style="display:flex;gap:8px;margin-bottom:20px;">
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
       <button class="btn btn-primary btn-sm" id="ds-tab-geral" onclick="switchDsTab('geral')">Geral</button>
       <button class="btn btn-outline btn-sm" id="ds-tab-pix" onclick="switchDsTab('pix')">PIX Gerado</button>
     </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;" id="ds-desc">
-      Sequências enviadas após o /start para todos os leads que não compraram.
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;" id="ds-desc">
+      Mensagens com desconto progressivo enviadas para leads que não compraram.
     </div>
 
-    <div class="card" id="ds-panel-geral">
-      <div class="section-hdr">
-        <div><h3>Sequências Downsell — Geral</h3></div>
-        <button class="btn btn-primary btn-sm" onclick="addSeq('downsell-geral')">+ Nova Sequência</button>
-      </div>
-      <div id="downsell-geral-seqs"></div>
-    </div>
-
-    <div class="card" id="ds-panel-pix" style="display:none;">
-      <div class="section-hdr">
-        <div>
-          <h3>Sequências Downsell — PIX Gerado</h3>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Enviadas para quem gerou PIX mas não pagou</div>
+    <div id="ds-panel-geral">
+      <div class="card">
+        <div class="section-hdr">
+          <div>
+            <h3>Mensagens com Desconto — Geral</h3>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Enviadas após o /start para quem não comprou</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addDsMsg('geral')">+ Nova Mensagem</button>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="addSeq('downsell-pix')">+ Nova Sequência</button>
+        <div id="downsell-geral-seqs"></div>
       </div>
-      <div id="downsell-pix-seqs"></div>
+    </div>
+
+    <div id="ds-panel-pix" style="display:none;">
+      <div class="card">
+        <div class="section-hdr">
+          <div>
+            <h3>Mensagens com Desconto — PIX Gerado</h3>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Para quem gerou PIX mas não pagou</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addDsMsg('pix')">+ Nova Mensagem</button>
+        </div>
+        <div id="downsell-pix-seqs"></div>
+      </div>
     </div>
   </div>
 
@@ -819,14 +949,37 @@ function renderAll() {
   renderBotsList();
   renderPlanos();
   renderSeqs('upsell');
-  renderSeqs('downsell-geral');
-  renderSeqs('downsell-pix');
+  renderDsMsgs('geral');
+  renderDsMsgs('pix');
   renderPacks();
   renderPgButtons();
+  // Fill upsell plan fields
+  if(state.upsell.plan) {
+    document.getElementById('upsell-plan-name').value    = state.upsell.plan.name    || '';
+    document.getElementById('upsell-plan-price').value   = state.upsell.plan.price   || '';
+    document.getElementById('upsell-plan-msg').value     = state.upsell.plan.msg     || '';
+    document.getElementById('upsell-plan-delivery').value= state.upsell.plan.delivery|| '';
+  }
 
   // Fill text fields
   document.getElementById('bv-msg').value = state.boasvindas.msg || '';
   countChars(document.getElementById('bv-msg'), 'bv-count');
+
+  // Restore midia if already uploaded
+  if(state.boasvindas.midia && state.boasvindas.midia_url) {
+    document.getElementById('toggle-midia').classList.add('on');
+    document.getElementById('midia-box').style.display = 'block';
+    document.getElementById('midia-url').value = state.boasvindas.midia_url;
+    const type = state.boasvindas.midia_type || 'image';
+    if(type === 'image') {
+      const img = document.getElementById('midia-preview-img');
+      img.src = state.boasvindas.midia_url; img.style.display = 'block';
+    } else {
+      const vid = document.getElementById('midia-preview-vid');
+      vid.src = state.boasvindas.midia_url; vid.style.display = 'block';
+    }
+    document.getElementById('midia-channel-info').style.display = 'flex';
+  }
   document.getElementById('pg-gerado-msg').value = state.pagamentos.gerado.msg || '';
   document.getElementById('pg-aprovado-msg').value = state.pagamentos.aprovado.msg || '';
   document.getElementById('cta-msg').value = state.pagamentos.gerado.cta_msg || '';
@@ -950,67 +1103,125 @@ function movePlano(i, dir) {
   [state.planos[i],state.planos[j]]=[state.planos[j],state.planos[i]]; renderPlanos(); markUnsaved();
 }
 
-// ── Sequências (Upsell / Downsell) ───────────────────────
-function getSeqList(type) {
-  if(type==='upsell') return state.upsell.seqs;
-  if(type==='downsell-geral') return state.downsell.geral;
-  if(type==='downsell-pix') return state.downsell.pix;
-  return [];
-}
-function getSeqEl(type) {
-  if(type==='upsell') return 'upsell-seqs';
-  if(type==='downsell-geral') return 'downsell-geral-seqs';
-  if(type==='downsell-pix') return 'downsell-pix-seqs';
-}
-
+// ── Sequências Upsell ─────────────────────────────────────
 function renderSeqs(type) {
-  const list = getSeqList(type);
-  const elId = getSeqEl(type);
-  const el   = document.getElementById(elId); if(!el) return;
+  const list = type==='upsell' ? state.upsell.seqs : [];
+  const el   = document.getElementById('upsell-seqs'); if(!el) return;
   if(!list.length) {
-    el.innerHTML = `<div class="empty-seq"><div class="ei">📨</div>Nenhuma sequência.<br>Clique em "+ Nova Sequência"</div>`;
-    if(type==='upsell') document.getElementById('upsell-seq-count').textContent = '0/20';
+    el.innerHTML = `<div class="empty-seq"><div class="ei">📨</div>Nenhuma sequência de follow-up.<br>Clique em "+ Nova Sequência"</div>`;
+    document.getElementById('upsell-seq-count').textContent = '0/20 — enviadas após a oferta principal';
     return;
   }
   el.innerHTML = list.map((s, i) => `
     <div class="seq-card">
       <div class="seq-header">
         <div class="seq-num">${i+1}</div>
-        <span style="font-size:13px;font-weight:600;">Sequência ${i+1}</span>
+        <span style="font-size:13px;font-weight:600;">Follow-up ${i+1}</span>
         <span style="font-size:12px;color:var(--text-muted);margin-left:4px;">· Aguardar:</span>
-        <select class="delay-select" onchange="getSeqList('${type}')[${i}].delay=this.value;markUnsaved()">
+        <select class="delay-select" onchange="state.upsell.seqs[${i}].delay=this.value;markUnsaved()">
           ${['Imediato','5 min','15 min','30 min','1 hora','2 horas','6 horas','12 horas','1 dia','2 dias','3 dias','7 dias']
             .map(d=>`<option ${s.delay===d?'selected':''}>${d}</option>`).join('')}
         </select>
-        <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);" onclick="removeSeq('${type}',${i})">🗑️</button>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);" onclick="state.upsell.seqs.splice(${i},1);renderSeqs('upsell');markUnsaved()">🗑️</button>
       </div>
-      <div class="rich-toolbar">
-        <button class="rich-btn"><b>B</b></button><button class="rich-btn"><i>I</i></button>
-        <button class="rich-btn">&lt;&gt;</button>
-      </div>
+      <div class="rich-toolbar"><button class="rich-btn"><b>B</b></button><button class="rich-btn"><i>I</i></button></div>
       <textarea class="rich-area" style="min-height:80px;" placeholder="Ei {nome}, ainda está aqui? 👀"
-        oninput="getSeqList('${type}')[${i}].msg=this.value;markUnsaved()">${s.msg||''}</textarea>
+        oninput="state.upsell.seqs[${i}].msg=this.value;markUnsaved()">${s.msg||''}</textarea>
       <div class="var-tags" style="margin-top:6px;">
-        <span class="var-tag" onclick="insertVarSeq('${type}',${i},'{nome}')">&#123;nome&#125;</span>
-        <span class="var-tag" onclick="insertVarSeq('${type}',${i},'{plano}')">&#123;plano&#125;</span>
-        <span class="var-tag" onclick="insertVarSeq('${type}',${i},'{valor}')">&#123;valor&#125;</span>
+        <span class="var-tag" onclick="state.upsell.seqs[${i}].msg+= '{nome}';renderSeqs('upsell')">&#123;nome&#125;</span>
+        <span class="var-tag" onclick="state.upsell.seqs[${i}].msg+= '{valor}';renderSeqs('upsell')">&#123;valor&#125;</span>
       </div>
     </div>`).join('');
-  if(type==='upsell') document.getElementById('upsell-seq-count').textContent = `${list.length}/20`;
+  document.getElementById('upsell-seq-count').textContent = `${list.length}/20 — enviadas após a oferta principal`;
 }
 
 function addSeq(type) {
-  const list = getSeqList(type);
-  const max  = type==='upsell' ? 20 : 50;
-  if(list.length >= max) { toast(`Limite de ${max} sequências.`,'error'); return; }
-  list.push({ delay:'Imediato', msg:'' });
-  renderSeqs(type); markUnsaved();
+  if(state.upsell.seqs.length >= 20) { toast('Limite de 20 sequências.','error'); return; }
+  state.upsell.seqs.push({ delay:'1 hora', msg:'' });
+  renderSeqs('upsell'); markUnsaved();
 }
-function removeSeq(type, i) { getSeqList(type).splice(i,1); renderSeqs(type); markUnsaved(); }
-function insertVarSeq(type, i, v) {
-  // Simple insert at end
-  getSeqList(type)[i].msg = (getSeqList(type)[i].msg||'') + v;
-  renderSeqs(type); markUnsaved();
+
+// ── Downsell com desconto ──────────────────────────────────
+const DISCOUNT_OPTIONS = [0,5,10,15,20,25,30,35,40,50,60,70];
+const TIME_OPTIONS = [
+  {label:'5 min', val:'5min'},{label:'10 min', val:'10min'},{label:'15 min', val:'15min'},
+  {label:'30 min', val:'30min'},{label:'45 min', val:'45min'},{label:'1 hora', val:'1h'},
+  {label:'2 horas', val:'2h'},{label:'3 horas', val:'3h'},{label:'6 horas', val:'6h'},
+  {label:'12 horas', val:'12h'},{label:'1 dia', val:'1d'},{label:'2 dias', val:'2d'},
+  {label:'3 dias', val:'3d'},{label:'7 dias', val:'7d'}
+];
+
+function renderDsMsgs(dsType) {
+  const list = dsType === 'geral' ? state.downsell.geral : state.downsell.pix;
+  const elId = dsType === 'geral' ? 'downsell-geral-seqs' : 'downsell-pix-seqs';
+  const el   = document.getElementById(elId); if(!el) return;
+
+  if(!list.length) {
+    el.innerHTML = `<div class="empty-seq"><div class="ei">💬</div>Nenhuma mensagem de downsell.<br>Clique em "+ Nova Mensagem"</div>`;
+    return;
+  }
+
+  el.innerHTML = list.map((s, i) => {
+    const discountOpts = DISCOUNT_OPTIONS.map(d =>
+      `<option value="${d}" ${s.discount==d?'selected':''}>${d===0?'Sem desconto':'-'+d+'%'}</option>`).join('');
+    const timeOpts = TIME_OPTIONS.map(t =>
+      `<option value="${t.val}" ${s.time===t.val?'selected':''}>${t.label}</option>`).join('');
+
+    const previewPrice = s.discount > 0
+      ? `<span style="font-size:11px;color:var(--success);margin-left:4px;">⇒ Preço com desconto exibido automaticamente</span>`
+      : '';
+
+    return `<div class="ds-msg-card">
+      <div class="ds-header-row">
+        <div class="seq-num">${i+1}</div>
+        <span style="font-size:13px;font-weight:600;">Mensagem ${i+1}</span>
+        <span style="font-size:12px;color:var(--text-muted);">· Desconto:</span>
+        <select class="discount-select" onchange="updateDsDiscount('${dsType}',${i},this.value)">
+          ${discountOpts}
+        </select>
+        <span style="font-size:12px;color:var(--text-muted);">· Enviar após:</span>
+        <select class="time-select" onchange="state.downsell.${dsType}[${i}].time=this.value;markUnsaved()">
+          ${timeOpts}
+        </select>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);"
+          onclick="state.downsell.${dsType}.splice(${i},1);renderDsMsgs('${dsType}');markUnsaved()">🗑️</button>
+      </div>
+      ${s.discount > 0 ? `
+      <div style="background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.15);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;color:var(--success);">🏷️ Desconto de <strong>${s.discount}%</strong> aplicado automaticamente no preço do plano</span>
+        <span class="ds-badge-discount">-${s.discount}%</span>
+      </div>` : ''}
+      <div class="rich-toolbar"><button class="rich-btn"><b>B</b></button><button class="rich-btn"><i>I</i></button></div>
+      <textarea class="rich-area" style="min-height:80px;"
+        placeholder="Ei {nome}! Temos uma oferta especial para você... ${s.discount>0?`\n\nDesconto exclusivo de ${s.discount}% \n\nUse o cupom abaixo para garantir:`:'👇'}"
+        oninput="state.downsell.${dsType}[${i}].msg=this.value;markUnsaved()">${s.msg||''}</textarea>
+      <div class="var-tags" style="margin-top:6px;">
+        <span class="var-tag" onclick="insertDsVar('${dsType}',${i},'{nome}')">&#123;nome&#125;</span>
+        <span class="var-tag" onclick="insertDsVar('${dsType}',${i},'{desconto}')">&#123;desconto&#125;</span>
+        <span class="var-tag" onclick="insertDsVar('${dsType}',${i},'{valor_original}')">&#123;valor_original&#125;</span>
+        <span class="var-tag" onclick="insertDsVar('${dsType}',${i},'{valor_com_desconto}')">&#123;valor_com_desconto&#125;</span>
+        <span class="var-tag" onclick="insertDsVar('${dsType}',${i},'{link_pagamento}')">&#123;link_pagamento&#125;</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateDsDiscount(dsType, i, val) {
+  state.downsell[dsType][i].discount = parseInt(val);
+  renderDsMsgs(dsType); markUnsaved();
+}
+
+function insertDsVar(dsType, i, v) {
+  state.downsell[dsType][i].msg = (state.downsell[dsType][i].msg||'') + v;
+  renderDsMsgs(dsType); markUnsaved();
+}
+
+function addDsMsg(dsType) {
+  const list = dsType === 'geral' ? state.downsell.geral : state.downsell.pix;
+  const lastDiscount = list.length > 0 ? list[list.length-1].discount : 0;
+  const nextDiscount = Math.min(lastDiscount + 5, 70);
+  list.push({ discount: nextDiscount, time: '30min', msg: '' });
+  renderDsMsgs(dsType); markUnsaved();
 }
 
 // ── Packs ─────────────────────────────────────────────────
@@ -1100,8 +1311,9 @@ function switchDsTab(tab) {
   document.getElementById('ds-tab-geral').className = isGeral ? 'btn btn-primary btn-sm' : 'btn btn-outline btn-sm';
   document.getElementById('ds-tab-pix').className   = isGeral ? 'btn btn-outline btn-sm' : 'btn btn-primary btn-sm';
   document.getElementById('ds-desc').textContent = isGeral
-    ? 'Sequências enviadas após o /start para todos os leads que não compraram.'
-    : 'Ative o "PIX Gerado" para diferenciar quem gerou pagamento mas não pagou.';
+    ? 'Mensagens com desconto progressivo para leads que não compraram.'
+    : 'Para quem gerou PIX mas não pagou — desconto para recuperar.';
+  renderDsMsgs(tab);
 }
 function switchPgTab(tab) {
   document.getElementById('pg-panel-gerado').style.display   = tab==='gerado' ? 'block' : 'none';
@@ -1115,6 +1327,108 @@ function toggleMidia() {
   const on = document.getElementById('toggle-midia').classList.contains('on');
   document.getElementById('midia-box').style.display = on ? 'block' : 'none';
   state.boasvindas.midia = on; markUnsaved();
+}
+
+function selectMidiaType(el) {
+  document.querySelectorAll('.midia-type-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('midia-type').value = el.dataset.type;
+  // Reset preview
+  document.getElementById('midia-preview-img').style.display = 'none';
+  document.getElementById('midia-preview-vid').style.display = 'none';
+  markUnsaved();
+}
+
+function handleMidiaDropped(e) {
+  e.preventDefault();
+  document.getElementById('midia-upload-area').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file) handleMidiaFile(file);
+}
+
+async function handleMidiaFile(file) {
+  if(!file) return;
+  const maxMB = 20;
+  if(file.size > maxMB * 1024 * 1024) { toast(`Arquivo muito grande. Máx ${maxMB}MB.`, 'error'); return; }
+
+  const type = file.type.startsWith('video') ? 'video' : 'image';
+  document.getElementById('midia-type').value = type;
+
+  // Show local preview immediately
+  const url = URL.createObjectURL(file);
+  if(type === 'image') {
+    const img = document.getElementById('midia-preview-img');
+    img.src = url; img.style.display = 'block';
+    document.getElementById('midia-preview-vid').style.display = 'none';
+  } else {
+    const vid = document.getElementById('midia-preview-vid');
+    vid.src = url; vid.style.display = 'block';
+    document.getElementById('midia-preview-img').style.display = 'none';
+  }
+
+  // Show file info
+  const infoEl = document.getElementById('midia-file-info');
+  document.getElementById('midia-file-name').textContent = file.name + ' (' + (file.size/1024/1024).toFixed(1) + 'MB)';
+  infoEl.style.display = 'flex';
+
+  // Upload to Supabase Storage
+  await uploadMidiaToStorage(file);
+}
+
+async function uploadMidiaToStorage(file) {
+  const progressEl = document.getElementById('midia-upload-progress');
+  const fillEl     = document.getElementById('midia-progress-fill');
+  const channelEl  = document.getElementById('midia-channel-info');
+  progressEl.style.display = 'block';
+  fillEl.style.width = '10%';
+
+  try {
+    const { data: { session } } = await supa.auth.getSession();
+    if(!session) { toast('Faça login primeiro.', 'error'); return; }
+
+    const ext  = file.name.split('.').pop();
+    const path = `${session.user.id}/funils/${FUNIL_ID||'temp'}/${Date.now()}.${ext}`;
+    fillEl.style.width = '40%';
+
+    const { data, error } = await supa.storage.from('media').upload(path, file, {
+      cacheControl: '3600', upsert: true
+    });
+    fillEl.style.width = '80%';
+
+    if(error) throw new Error(error.message);
+
+    const { data: urlData } = supa.storage.from('media').getPublicUrl(path);
+    document.getElementById('midia-url').value = urlData.publicUrl;
+    state.boasvindas.midia_url = urlData.publicUrl;
+
+    fillEl.style.width = '100%';
+    setTimeout(() => { progressEl.style.display = 'none'; fillEl.style.width = '0%'; }, 800);
+    channelEl.style.display = 'flex';
+    toast('✅ Mídia enviada com sucesso!');
+    markUnsaved();
+  } catch(e) {
+    progressEl.style.display = 'none';
+    toast('Erro no upload: ' + e.message, 'error');
+  }
+}
+
+function clearMidiaFile() {
+  document.getElementById('midia-preview-img').style.display = 'none';
+  document.getElementById('midia-preview-vid').style.display = 'none';
+  document.getElementById('midia-file-info').style.display   = 'none';
+  document.getElementById('midia-channel-info').style.display= 'none';
+  document.getElementById('midia-url').value = '';
+  document.getElementById('midia-file-input').value = '';
+  state.boasvindas.midia_url = '';
+  markUnsaved();
+}
+
+function toggleUpsellDelivery() {
+  const type = document.getElementById('upsell-plan-delivery-type').value;
+  const input = document.getElementById('upsell-plan-delivery');
+  if(type === 'link')  input.placeholder = 'https://...';
+  if(type === 'group') input.placeholder = 'https://t.me/joinchat/...';
+  if(type === 'msg')   input.placeholder = 'Mensagem de entrega...';
 }
 function toggleOrderBump() {
   const on = document.getElementById('toggle-ob').classList.contains('on');
@@ -1177,8 +1491,17 @@ async function saveFunil() {
 
   // Collect state from DOM
   state.name = document.getElementById('funil-title-input').value.trim() || 'Meu Funil';
-  state.boasvindas.msg = document.getElementById('bv-msg').value;
-  state.boasvindas.midia_url = document.getElementById('midia-url').value;
+  state.boasvindas.msg      = document.getElementById('bv-msg').value;
+  state.boasvindas.midia_url= document.getElementById('midia-url').value;
+  // Upsell plan
+  state.upsell.plan = {
+    name:     document.getElementById('upsell-plan-name').value,
+    price:    document.getElementById('upsell-plan-price').value,
+    gateway:  document.getElementById('upsell-plan-gateway').value,
+    delivery_type: document.getElementById('upsell-plan-delivery-type').value,
+    delivery: document.getElementById('upsell-plan-delivery').value,
+    msg:      document.getElementById('upsell-plan-msg').value,
+  };
   state.delivery_url = document.getElementById('delivery-url').value;
   state.pagamentos.gerado.msg     = document.getElementById('pg-gerado-msg').value;
   state.pagamentos.gerado.cta_msg = document.getElementById('cta-msg').value;
