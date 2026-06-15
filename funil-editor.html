@@ -1015,9 +1015,14 @@ function renderBotsList() {
         <div class="bot-avatar">🤖</div>
         <div class="bot-info">
           <div class="bot-name">${b.name} ${i===0?'<span class="badge-principal">Principal</span>':''}</div>
-          <div class="bot-user">${b.username||'@'+b.name.toLowerCase().replace(/\s/g,'')}</div>
+          <div class="bot-user">${b.username||('@'+b.name.toLowerCase().replace(/\s/g,''))}</div>
         </div>
-        <div class="toggle ${b.active?'on':''}" onclick="toggleBotActive(${i})"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:${b.active?'var(--success)':'var(--text-muted)'};">
+            ${b.active?'● Online':'○ Offline'}
+          </span>
+          <div class="toggle ${b.active?'on':''}" data-bot-toggle="${i}" onclick="toggleBotActive(${i})" title="${b.active?'Clique para desativar':'Clique para ativar'}"></div>
+        </div>
         <button class="btn btn-ghost btn-sm" onclick="removeBot(${i})" style="color:var(--danger);">🗑️</button>
       </div>`).join('');
   }
@@ -1025,22 +1030,72 @@ function renderBotsList() {
   populateBotSelect();
 }
 
+// ── URL do servidor Railway ────────────────────────────────
+const SERVER_URL = 'https://unique-joy-production-c535.up.railway.app';
+
 function addBot() {
   const sel = document.getElementById('add-bot-select');
   const id  = sel.value; if(!id) { toast('Selecione um bot primeiro.','error'); return; }
   const bot = allBots.find(b => b.id == id);
   if(!bot) return;
-  state.bots.push({...bot, active: true});
+  state.bots.push({...bot, active: false});
   renderBotsList(); markUnsaved();
-  toast(`Bot "${bot.name}" adicionado!`);
+  toast(`Bot "${bot.name}" adicionado! Salve e ative o toggle para iniciar.`);
 }
 
 function removeBot(i) {
+  const bot = state.bots[i];
+  if(bot?.active) {
+    if(!confirm(`Desativar e remover o bot "${bot.name}"?`)) return;
+    callBotAPI(bot.id, 'deactivate').catch(() => {});
+  }
   state.bots.splice(i, 1); renderBotsList(); markUnsaved();
 }
 
-function toggleBotActive(i) {
-  state.bots[i].active = !state.bots[i].active; renderBotsList(); markUnsaved();
+async function toggleBotActive(i) {
+  const bot = state.bots[i];
+  const willActivate = !bot.active;
+
+  // Atualizar UI imediatamente
+  state.bots[i].active = willActivate;
+  renderBotsList();
+
+  // Chamar servidor Railway
+  const btn = document.querySelector(`[data-bot-toggle="${i}"]`);
+  try {
+    const action = willActivate ? 'activate' : 'deactivate';
+    const result = await callBotAPI(bot.id, action);
+
+    if(result.ok) {
+      // Atualizar no Supabase também
+      await supa.from('bots').update({ active: willActivate }).eq('id', bot.id);
+      toast(willActivate
+        ? `✅ Bot "${bot.name}" ativado! Escutando mensagens.`
+        : `⏸ Bot "${bot.name}" pausado.`
+      );
+      markUnsaved();
+    } else {
+      throw new Error(result.error || 'Erro no servidor');
+    }
+  } catch(e) {
+    // Reverter toggle se falhou
+    state.bots[i].active = !willActivate;
+    renderBotsList();
+    toast(`Erro ao ${willActivate?'ativar':'desativar'} bot: ${e.message}`, 'error');
+    console.error('[toggleBotActive]', e);
+  }
+}
+
+async function callBotAPI(botId, action) {
+  const res = await fetch(`${SERVER_URL}/api/bots/${botId}/${action}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if(!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return res.json();
 }
 
 async function refreshBots() { await loadBots(); toast('Bots atualizados!'); }
