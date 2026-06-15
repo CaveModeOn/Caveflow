@@ -833,10 +833,17 @@ const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 let currentUser = null;
 
-// Auth headers — usa o token da sessão ativa do SDK
-async function getAuthHeaders() {
+// ── Token cacheado para uso síncrono ───────────────────────
+let _cachedToken = null;
+
+async function refreshToken() {
   const { data: { session } } = await supa.auth.getSession();
-  const token = session?.access_token || SUPA_KEY;
+  _cachedToken = session?.access_token || null;
+  return _cachedToken;
+}
+
+function getAuthHeaders() {
+  const token = _cachedToken || SUPA_KEY;
   return {
     'apikey': SUPA_KEY,
     'Authorization': `Bearer ${token}`,
@@ -871,6 +878,7 @@ let unsaved = false;
 
 // ── Init ──────────────────────────────────────────────────
 async function init() {
+  await refreshToken();          // cacheia o token primeiro
   await loadBots();
   if(FUNIL_ID) await loadFunil();
   renderAll();
@@ -886,6 +894,7 @@ async function loadBots() {
       return;
     }
     currentUser = session.user;
+    _cachedToken = session.access_token; // garantir cache
 
     // Buscar bots do usuário logado
     const { data, error } = await supa.from('bots')
@@ -1515,31 +1524,49 @@ async function saveFunil() {
   const payload = { name: state.name, config: state, updated_at: new Date().toISOString() };
 
   try {
-    let res;
+    // Garantir token atualizado
+    await refreshToken();
+
+    let error = null;
+
     if(FUNIL_ID) {
-      res = await fetch(`${SUPA_URL}/rest/v1/funnels?id=eq.${FUNIL_ID}`, {
-        method: 'PATCH',
-        headers: { ...getAuthHeaders(), 'Prefer': 'return=minimal' },
-        body: JSON.stringify(payload)
-      });
+      // UPDATE
+      const result = await supa
+        .from('funnels')
+        .update(payload)
+        .eq('id', FUNIL_ID);
+      error = result.error;
     } else {
-      res = await fetch(`${SUPA_URL}/rest/v1/funnels`, {
-        method: 'POST',
-        headers: { ...getAuthHeaders(), 'Prefer': 'return=representation' },
-        body: JSON.stringify(payload)
-      });
+      // INSERT — precisa do user_id
+      if(!currentUser) {
+        // Tentar pegar da sessão
+        const { data: { session } } = await supa.auth.getSession();
+        if(session) currentUser = session.user;
+      }
+      if(!currentUser) throw new Error('Faça login no painel principal primeiro.');
+
+      const result = await supa
+        .from('funnels')
+        .insert({ ...payload, user_id: currentUser.id });
+      error = result.error;
     }
-    if(res.ok || res.status === 204) {
-      btn.textContent = '✅ Salvo!'; btn.className = 'save-btn saved';
-      unsaved = false;
-      setTimeout(() => { btn.textContent = '💾 Salvar Configuração'; btn.className = 'save-btn'; btn.disabled = false; }, 2000);
-      toast('Configurações salvas na nuvem! ☁️');
-    } else {
-      throw new Error('HTTP ' + res.status);
-    }
+
+    if(error) throw new Error(error.message);
+
+    btn.textContent = '✅ Salvo!'; btn.className = 'save-btn saved';
+    unsaved = false;
+    setTimeout(() => {
+      btn.textContent = '💾 Salvar Configuração';
+      btn.className = 'save-btn';
+      btn.disabled = false;
+    }, 2500);
+    toast('Configurações salvas na nuvem! ☁️');
+
   } catch(e) {
-    btn.textContent = '💾 Salvar Configuração'; btn.disabled = false;
+    btn.textContent = '💾 Salvar Configuração';
+    btn.disabled = false;
     toast('Erro ao salvar: ' + e.message, 'error');
+    console.error('[saveFunil]', e);
   }
 }
 
