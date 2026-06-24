@@ -1110,7 +1110,14 @@ function renderPlanos() {
       <div class="plan-card">
         <div class="plan-header">
           <div class="plan-num">${i+1}</div>
-          <input class="plan-name-input" value="${p.name||'Plano '+(i+1)}" oninput="state.planos[${i}].name=this.value;markUnsaved()">
+          <div style="flex:1;">
+            <input class="plan-name-input" value="${p.name||''}"
+              placeholder="Nome do plano (aparece no botão do Telegram) *"
+              oninput="state.planos[${i}].name=this.value;markUnsaved();updatePlanPreview(${i})">
+            <div id="plan-btn-preview-${i}" style="margin-top:4px;font-size:11px;color:var(--accent);">
+              ${p.name && p.price ? `🔘 Botão Telegram: "${p.name} — R$ ${Number(p.price).toFixed(2).replace('.',',')}"` : '<span style="color:var(--text-muted);">Preencha nome e preço para ver o botão</span>'}
+            </div>
+          </div>
           <div class="plan-actions">
             <button class="btn btn-outline btn-sm" onclick="movePlano(${i},-1)">↑</button>
             <button class="btn btn-outline btn-sm" onclick="movePlano(${i},1)">↓</button>
@@ -1121,7 +1128,7 @@ function renderPlanos() {
           <div class="form-group">
             <label class="form-label">Preço (R$)</label>
             <input class="form-control" type="number" value="${p.price||''}" step="0.01" placeholder="29.90"
-              oninput="state.planos[${i}].price=this.value;markUnsaved()">
+              oninput="state.planos[${i}].price=this.value;markUnsaved();updatePlanPreview(${i})">
           </div>
           <div class="form-group">
             <label class="form-label">Gateway</label>
@@ -1416,8 +1423,15 @@ async function handleMidiaFile(file) {
   const maxMB = 20;
   if(file.size > maxMB * 1024 * 1024) { toast(`Arquivo muito grande. Máx ${maxMB}MB.`, 'error'); return; }
 
-  const type = file.type.startsWith('video') ? 'video' : 'image';
+  // Auto-detectar tipo pelo arquivo
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm)$/i.test(file.name);
+  const type    = isVideo ? 'video' : 'image';
+
+  // Atualizar botões e hidden input
+  document.querySelectorAll('.midia-type-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.midia-type-btn[data-type="${type}"]`)?.classList.add('active');
   document.getElementById('midia-type').value = type;
+  state.boasvindas.midia_type = type; // salvar no state imediatamente
 
   // Show local preview immediately
   const url = URL.createObjectURL(file);
@@ -1558,6 +1572,7 @@ async function saveFunil() {
   state.name = document.getElementById('funil-title-input').value.trim() || 'Meu Funil';
   state.boasvindas.msg      = document.getElementById('bv-msg').value;
   state.boasvindas.midia_url= document.getElementById('midia-url').value;
+  state.boasvindas.midia_type = document.getElementById('midia-type').value || state.boasvindas.midia_type || 'image';
   // Upsell plan
   state.upsell.plan = {
     name:     document.getElementById('upsell-plan-name').value,
@@ -1623,6 +1638,18 @@ async function saveFunil() {
     btn.disabled = false;
     toast('Erro ao salvar: ' + e.message, 'error');
     console.error('[saveFunil]', e);
+  }
+}
+
+function updatePlanPreview(i) {
+  const p = state.planos[i]
+  const el = document.getElementById('plan-btn-preview-' + i)
+  if(!el) return
+  if(p.name && p.price) {
+    el.innerHTML = `🔘 Botão Telegram: "<strong>${p.name} — R$ ${Number(p.price).toFixed(2).replace('.',',')}</strong>"`
+    el.style.color = 'var(--accent)'
+  } else {
+    el.innerHTML = '<span style="color:var(--text-muted);">Preencha nome e preço para ver o botão</span>'
   }
 }
 
