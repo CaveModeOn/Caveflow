@@ -574,14 +574,28 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
           <div class="toggle-label">Ativar Upsell</div>
           <div class="toggle-desc">Envia oferta após pagamento aprovado</div>
         </div>
-        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        <div class="toggle on" id="toggle-upsell-active" onclick="this.classList.toggle('on');toggleUpsellDelay()"></div>
       </div>
-      <div class="toggle-row">
-        <div class="toggle-info">
-          <div class="toggle-label">Upsell Instantâneo</div>
-          <div class="toggle-desc">Envia imediatamente após confirmação</div>
+
+      <div id="upsell-delay-config" style="margin-top:14px;">
+        <div class="form-group">
+          <label class="form-label">⏱️ Quando enviar o Upsell</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="upsell-delay-btns">
+            <button class="btn btn-primary btn-sm upsell-delay-btn" data-delay="0"     onclick="selectUpsellDelay(this)">⚡ Imediato</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="300"   onclick="selectUpsellDelay(this)">5 min</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="900"   onclick="selectUpsellDelay(this)">15 min</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="1800"  onclick="selectUpsellDelay(this)">30 min</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="3600"  onclick="selectUpsellDelay(this)">1 hora</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="7200"  onclick="selectUpsellDelay(this)">2 horas</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="21600" onclick="selectUpsellDelay(this)">6 horas</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="43200" onclick="selectUpsellDelay(this)">12 horas</button>
+            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="86400" onclick="selectUpsellDelay(this)">1 dia</button>
+          </div>
+          <input type="hidden" id="upsell-delay" value="0">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="upsell-delay-desc">
+            ⚡ O upsell será enviado imediatamente após o pagamento confirmado.
+          </div>
         </div>
-        <div class="toggle" onclick="this.classList.toggle('on')"></div>
       </div>
     </div>
 
@@ -1097,6 +1111,23 @@ function renderAll() {
     document.getElementById('upsell-plan-price').value   = state.upsell.plan.price   || '';
     document.getElementById('upsell-plan-msg').value     = state.upsell.plan.msg     || '';
     document.getElementById('upsell-plan-delivery').value= state.upsell.plan.delivery|| '';
+  }
+  // Restore upsell
+  if(state.upsell.active) {
+    document.getElementById('toggle-upsell-active').classList.add('on');
+    document.getElementById('upsell-config-panel').style.display = 'block';
+  }
+  restoreUpsellDelay(state.upsell.delay || 0);
+  if(document.getElementById('upsell-msg'))
+    document.getElementById('upsell-msg').value = state.upsell.msg || '';
+  if(state.upsell.has_plan) {
+    document.getElementById('toggle-upsell-plano').classList.add('on');
+    document.getElementById('upsell-plano-box').style.display = 'block';
+  }
+  if(state.upsell.plan) {
+    if(document.getElementById('upsell-plan-name'))  document.getElementById('upsell-plan-name').value  = state.upsell.plan.name  || '';
+    if(document.getElementById('upsell-plan-price')) document.getElementById('upsell-plan-price').value = state.upsell.plan.price || '';
+    updateUpsellPlanPreview();
   }
 
   // Fill text fields
@@ -1713,6 +1744,76 @@ async function loadBotGroups() {
   }
 }
 
+
+// ── Upsell delay ───────────────────────────────────────────
+const DELAY_LABELS = {
+  0: '⚡ O upsell será enviado imediatamente após o pagamento confirmado.',
+  300: '⏱️ O upsell será enviado 5 minutos após o pagamento.',
+  900: '⏱️ O upsell será enviado 15 minutos após o pagamento.',
+  1800: '⏱️ O upsell será enviado 30 minutos após o pagamento.',
+  3600: '⏱️ O upsell será enviado 1 hora após o pagamento.',
+  7200: '⏱️ O upsell será enviado 2 horas após o pagamento.',
+  21600: '⏱️ O upsell será enviado 6 horas após o pagamento.',
+  43200: '⏱️ O upsell será enviado 12 horas após o pagamento.',
+  86400: '⏱️ O upsell será enviado 1 dia após o pagamento.'
+}
+
+function selectUpsellDelay(el) {
+  document.querySelectorAll('.upsell-delay-btn').forEach(b => {
+    b.classList.remove('btn-primary')
+    b.classList.add('btn-outline')
+  })
+  el.classList.remove('btn-outline')
+  el.classList.add('btn-primary')
+  const delay = parseInt(el.dataset.delay)
+  document.getElementById('upsell-delay').value = delay
+  document.getElementById('upsell-delay-desc').textContent = DELAY_LABELS[delay] || ''
+  state.upsell.delay = delay
+  markUnsaved()
+}
+
+function toggleUpsellDelay() {
+  // mantido para compatibilidade
+}
+
+function toggleUpsellPanel() {
+  const on = document.getElementById('toggle-upsell-active').classList.contains('on')
+  document.getElementById('upsell-config-panel').style.display = on ? 'block' : 'none'
+  state.upsell.active = on
+  markUnsaved()
+}
+
+function toggleUpsellPlano() {
+  const on = document.getElementById('toggle-upsell-plano').classList.contains('on')
+  document.getElementById('upsell-plano-box').style.display = on ? 'block' : 'none'
+  state.upsell.has_plan = on
+  markUnsaved()
+}
+
+function updateUpsellPlanPreview() {
+  const name  = document.getElementById('upsell-plan-name').value
+  const price = document.getElementById('upsell-plan-price').value
+  const prev  = document.getElementById('upsell-plan-preview')
+  const text  = document.getElementById('upsell-plan-preview-text')
+  if(name && price) {
+    text.textContent = `${name} | R$ ${Number(price).toFixed(2).replace('.',',')}`
+    prev.style.display = 'block'
+  } else {
+    prev.style.display = 'none'
+  }
+  markUnsaved()
+}
+
+function restoreUpsellDelay(delay) {
+  const btn = document.querySelector(`.upsell-delay-btn[data-delay="${delay}"]`)
+  if(btn) selectUpsellDelay(btn)
+  else {
+    // Selecionar imediato como padrão
+    const first = document.querySelector('.upsell-delay-btn[data-delay="0"]')
+    if(first) selectUpsellDelay(first)
+  }
+}
+
 function toggleUpsellDelivery() {
   const type = document.getElementById('upsell-plan-delivery-type').value;
   const input = document.getElementById('upsell-plan-delivery');
@@ -1896,14 +1997,17 @@ async function saveFunil() {
   state.boasvindas.cta_text   = document.getElementById('bv-cta-text').value;
   state.boasvindas.cta_url    = document.getElementById('bv-cta-url').value;
 
-  // Upsell plan
+  // Upsell
+  state.upsell.active   = document.getElementById('toggle-upsell-active').classList.contains('on');
+  state.upsell.delay    = parseInt(document.getElementById('upsell-delay').value) || 0;
+  state.upsell.msg      = document.getElementById('upsell-msg')?.value || '';
+  state.upsell.has_plan = document.getElementById('toggle-upsell-plano').classList.contains('on');
   state.upsell.plan = {
-    name:          document.getElementById('upsell-plan-name').value,
-    price:         document.getElementById('upsell-plan-price').value,
-    gateway:       document.getElementById('upsell-plan-gateway').value,
-    delivery_type: document.getElementById('upsell-plan-delivery-type').value,
-    delivery:      document.getElementById('upsell-plan-delivery').value,
-    msg:           document.getElementById('upsell-plan-msg').value,
+    name:     document.getElementById('upsell-plan-name')?.value || '',
+    price:    document.getElementById('upsell-plan-price')?.value || '',
+    days:     parseInt(document.getElementById('upsell-plan-days')?.value) || 30,
+    chat_id:  document.getElementById('upsell-plan-chat-id')?.value || '',
+    gateway:  'nexuspag',
   };
   state.delivery_url = document.getElementById('delivery-url').value;
 
