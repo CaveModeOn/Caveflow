@@ -1311,6 +1311,59 @@ function renderPlanos() {
           <div class="toggle-info"><div class="toggle-label">Preço dinâmico por lead</div><div class="toggle-desc">Gera preço único por Telegram ID</div></div>
           <div class="toggle ${p.dynamic?'on':''}" onclick="state.planos[${i}].dynamic=!state.planos[${i}].dynamic;renderPlanos();markUnsaved()"></div>
         </div>
+
+        <!-- Order Bump -->
+        <div style="border-top:1px solid var(--border-subtle);margin-top:12px;padding-top:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${p.orderbump?'12px':'0'};">
+            <div>
+              <div style="font-size:13px;font-weight:600;">🛒 Order Bump</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Produto adicional oferecido no checkout deste plano</div>
+            </div>
+            <div class="toggle ${p.orderbump?'on':''}" onclick="state.planos[${i}].orderbump=!state.planos[${i}].orderbump;renderPlanos();markUnsaved()"></div>
+          </div>
+          ${p.orderbump ? `
+          <div style="background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.15);border-radius:var(--radius-sm);padding:12px;">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Nome do Bump</label>
+                <input class="form-control" value="${p.ob_name||''}" placeholder="Ex: Pack Extra"
+                  oninput="state.planos[${i}].ob_name=this.value;markUnsaved()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Preço (R$)</label>
+                <input class="form-control" type="number" value="${p.ob_price||''}" placeholder="29.90" step="0.01"
+                  oninput="state.planos[${i}].ob_price=this.value;renderPlanos();markUnsaved()">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Descrição (texto enviado junto)</label>
+              <textarea class="form-control" rows="2" placeholder="Adicione também o pack extra por apenas R$ {ob_valor}! 🎁"
+                oninput="state.planos[${i}].ob_desc=this.value;markUnsaved()">${p.ob_desc||''}</textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Dias de Acesso</label>
+                <select class="form-control" onchange="state.planos[${i}].ob_days=parseInt(this.value);markUnsaved()">
+                  ${[1,3,7,14,15,30,60,90,180,365].map(d =>
+                    `<option value="${d}" ${(p.ob_days||30)==d?'selected':''}>${d} ${d===1?'dia':'dias'}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Grupo de Entrega</label>
+                <select class="form-control" onchange="state.planos[${i}].ob_chat_id=this.value;markUnsaved()">
+                  <option value="">Selecionar grupo...</option>
+                  ${(window._botGroups||[]).map(g => `<option value="${g.id}" ${p.ob_chat_id==g.id?'selected':''}>${g.title}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            ${p.ob_name && p.ob_price ? `
+            <div style="font-size:11px;color:var(--success);margin-top:4px;">
+              🔘 Botão: "✅ Adicionar ${p.ob_name} por R$ ${Number(p.ob_price).toFixed(2).replace('.',',')} "
+            </div>` : ''}
+          </div>` : ''}
+        </div>
+
       </div>`).join('');
   }
   document.getElementById('planos-count').textContent = `${state.planos.length}/10`;
