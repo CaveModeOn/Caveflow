@@ -3123,6 +3123,8 @@ async function loadConversionMetrics() {
     document.getElementById('conv-start-pago-abs').textContent = `conversão geral do funil`
   } catch(e) { console.warn('[metrics]', e.message) }
 }
+
+async function renderSalesChart(days, txs, leadsCount) {
   destroyChart('salesLeads')
   const labels = []
   const revenueData = []
