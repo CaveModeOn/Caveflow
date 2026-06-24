@@ -1115,7 +1115,7 @@ function renderPlanos() {
               placeholder="Nome do plano (aparece no botão do Telegram) *"
               oninput="state.planos[${i}].name=this.value;markUnsaved();updatePlanPreview(${i})">
             <div id="plan-btn-preview-${i}" style="margin-top:4px;font-size:11px;color:var(--accent);">
-              ${p.name && p.price ? `🔘 Botão Telegram: "${p.name} — R$ ${Number(p.price).toFixed(2).replace('.',',')}"` : '<span style="color:var(--text-muted);">Preencha nome e preço para ver o botão</span>'}
+              ${p.name && p.price ? `🔘 Botão Telegram: "${p.name} | R$ ${Number(p.price).toFixed(2).replace('.',',')}"` : '<span style="color:var(--text-muted);">Preencha nome e preço para ver o botão</span>'}
             </div>
           </div>
           <div class="plan-actions">
@@ -1646,7 +1646,7 @@ function updatePlanPreview(i) {
   const el = document.getElementById('plan-btn-preview-' + i)
   if(!el) return
   if(p.name && p.price) {
-    el.innerHTML = `🔘 Botão Telegram: "<strong>${p.name} — R$ ${Number(p.price).toFixed(2).replace('.',',')}</strong>"`
+    el.innerHTML = `🔘 Botão Telegram: "<strong>${p.name} | R$ ${Number(p.price).toFixed(2).replace('.',',')}</strong>"`
     el.style.color = 'var(--accent)'
   } else {
     el.innerHTML = '<span style="color:var(--text-muted);">Preencha nome e preço para ver o botão</span>'
