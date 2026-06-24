@@ -562,106 +562,36 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
   <!-- ── UPSELL ── -->
   <div class="panel" id="panel-upsell">
     <div class="card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
         <div>
           <div class="card-title" style="margin-bottom:4px;">📈 Upsell</div>
-          <div style="font-size:12px;color:var(--text-muted);">Aumente suas vendas com ofertas especiais pós-compra</div>
+          <div style="font-size:12px;color:var(--text-muted);">Sequência de mensagens enviadas após pagamento aprovado</div>
         </div>
-        <div class="toggle on" id="toggle-upsell" onclick="this.classList.toggle('on')"></div>
-      </div>
-      <div class="toggle-row">
-        <div class="toggle-info">
-          <div class="toggle-label">Ativar Upsell</div>
-          <div class="toggle-desc">Envia oferta após pagamento aprovado</div>
-        </div>
-        <div class="toggle on" id="toggle-upsell-active" onclick="this.classList.toggle('on');toggleUpsellDelay()"></div>
-      </div>
-
-      <div id="upsell-delay-config" style="margin-top:14px;">
-        <div class="form-group">
-          <label class="form-label">⏱️ Quando enviar o Upsell</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;" id="upsell-delay-btns">
-            <button class="btn btn-primary btn-sm upsell-delay-btn" data-delay="0"     onclick="selectUpsellDelay(this)">⚡ Imediato</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="300"   onclick="selectUpsellDelay(this)">5 min</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="900"   onclick="selectUpsellDelay(this)">15 min</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="1800"  onclick="selectUpsellDelay(this)">30 min</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="3600"  onclick="selectUpsellDelay(this)">1 hora</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="7200"  onclick="selectUpsellDelay(this)">2 horas</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="21600" onclick="selectUpsellDelay(this)">6 horas</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="43200" onclick="selectUpsellDelay(this)">12 horas</button>
-            <button class="btn btn-outline btn-sm upsell-delay-btn" data-delay="86400" onclick="selectUpsellDelay(this)">1 dia</button>
-          </div>
-          <input type="hidden" id="upsell-delay" value="0">
-          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="upsell-delay-desc">
-            ⚡ O upsell será enviado imediatamente após o pagamento confirmado.
-          </div>
-        </div>
+        <div class="toggle" id="toggle-upsell-active" onclick="this.classList.toggle('on');toggleUpsellPanel()"></div>
       </div>
     </div>
 
-    <!-- Plano do Upsell -->
-    <div class="card">
-      <div class="card-title" style="margin-bottom:4px;">💳 Plano do Upsell</div>
-      <div class="card-sub">Oferta apresentada após a compra principal</div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Nome da Oferta <span class="req">*</span></label>
-          <input class="form-control" id="upsell-plan-name" placeholder="Ex: Pack VIP Completo">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Preço (R$) <span class="req">*</span></label>
-          <input class="form-control" id="upsell-plan-price" type="number" placeholder="97.00" step="0.01">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Gateway</label>
-          <select class="form-control" id="upsell-plan-gateway">
-            <option value="nexuspag">NexusPag</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tipo de Entrega</label>
-          <select class="form-control" id="upsell-plan-delivery-type" onchange="toggleUpsellDelivery()">
-            <option value="link">🔗 Link Externo</option>
-            <option value="group">👥 Grupo/Canal Telegram</option>
-            <option value="msg">💬 Mensagem</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Entregável</label>
-        <input class="form-control" id="upsell-plan-delivery" placeholder="https://t.me/...">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Mensagem da Oferta</label>
-        <div class="rich-toolbar">
-          <button class="rich-btn"><b>B</b></button>
-          <button class="rich-btn"><i>I</i></button>
-          <button class="rich-btn">&lt;&gt;</button>
-        </div>
-        <textarea class="rich-area" id="upsell-plan-msg" rows="4" oninput="countChars(this,'upsell-msg-count')" placeholder="🔥 Oferta especial para você!&#10;&#10;Por ser nosso cliente, temos um benefício exclusivo..."></textarea>
-        <div class="char-count"><span id="upsell-msg-count">0</span>/4000</div>
-        <div class="var-tags" style="margin-top:6px;">
-          <span class="var-tag" onclick="insertVar('upsell-plan-msg','{nome}')">&#123;nome&#125;</span>
-          <span class="var-tag" onclick="insertVar('upsell-plan-msg','{valor}')">&#123;valor&#125;</span>
-          <span class="var-tag" onclick="insertVar('upsell-plan-msg','{plano}')">&#123;plano&#125;</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Sequências de Upsell -->
-    <div class="card">
-      <div class="section-hdr">
+    <div id="upsell-config-panel" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
         <div>
-          <h3>Sequências de Follow-up</h3>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="upsell-seq-count">0/20 — enviadas após a oferta principal</div>
+          <div style="font-size:14px;font-weight:700;">Mensagens</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;" id="upsell-msgs-count">0 mensagens configuradas</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="addSeq('upsell')">+ Nova Sequência</button>
+        <button class="btn btn-primary btn-sm" onclick="addUpsellMsg()">+ Nova Mensagem</button>
       </div>
-      <div id="upsell-seqs"></div>
+      <div id="upsell-msgs-list"></div>
     </div>
+
+    <input type="hidden" id="upsell-delay" value="0">
+    <input type="hidden" id="upsell-plan-name" value="">
+    <input type="hidden" id="upsell-plan-price" value="">
+    <input type="hidden" id="upsell-plan-gateway" value="nexuspag">
+    <input type="hidden" id="upsell-plan-delivery-type" value="group">
+    <input type="hidden" id="upsell-plan-delivery" value="">
+    <input type="hidden" id="upsell-plan-msg" value="">
+    <input type="hidden" id="upsell-msg" value="">
   </div>
+
 
   <!-- ── DOWNSELL ── -->
   <div class="panel" id="panel-downsell">
@@ -1113,22 +1043,12 @@ function renderAll() {
     document.getElementById('upsell-plan-delivery').value= state.upsell.plan.delivery|| '';
   }
   // Restore upsell
+  if(!state.upsell.msgs) state.upsell.msgs = [];
   if(state.upsell.active) {
     document.getElementById('toggle-upsell-active').classList.add('on');
     document.getElementById('upsell-config-panel').style.display = 'block';
   }
-  restoreUpsellDelay(state.upsell.delay || 0);
-  if(document.getElementById('upsell-msg'))
-    document.getElementById('upsell-msg').value = state.upsell.msg || '';
-  if(state.upsell.has_plan) {
-    document.getElementById('toggle-upsell-plano').classList.add('on');
-    document.getElementById('upsell-plano-box').style.display = 'block';
-  }
-  if(state.upsell.plan) {
-    if(document.getElementById('upsell-plan-name'))  document.getElementById('upsell-plan-name').value  = state.upsell.plan.name  || '';
-    if(document.getElementById('upsell-plan-price')) document.getElementById('upsell-plan-price').value = state.upsell.plan.price || '';
-    updateUpsellPlanPreview();
-  }
+  renderUpsellMsgs();
 
   // Fill text fields
   document.getElementById('bv-msg').value = state.boasvindas.msg || '';
@@ -1772,6 +1692,141 @@ function selectUpsellDelay(el) {
   markUnsaved()
 }
 
+
+// ═══════════════════════════════════════════════════════════
+//  UPSELL — MÚLTIPLAS MENSAGENS COM DELAY
+// ═══════════════════════════════════════════════════════════
+
+function toggleUpsellPanel() {
+  const on = document.getElementById('toggle-upsell-active').classList.contains('on')
+  document.getElementById('upsell-config-panel').style.display = on ? 'block' : 'none'
+  state.upsell.active = on
+  markUnsaved()
+}
+
+function addUpsellMsg() {
+  if(!state.upsell.msgs) state.upsell.msgs = []
+  state.upsell.msgs.push({ delay: 0, msg: '', has_plan: false, plan: { name:'', price:'', days:30, chat_id:'' } })
+  renderUpsellMsgs()
+  markUnsaved()
+}
+
+function removeUpsellMsg(i) {
+  state.upsell.msgs.splice(i, 1)
+  renderUpsellMsgs()
+  markUnsaved()
+}
+
+function renderUpsellMsgs() {
+  const msgs = state.upsell.msgs || []
+  const el   = document.getElementById('upsell-msgs-list')
+  const cnt  = document.getElementById('upsell-msgs-count')
+  if(cnt) cnt.textContent = msgs.length + ' mensagem(s) configurada(s)'
+  if(!el) return
+
+  if(!msgs.length) {
+    el.innerHTML = '<div class="empty-seq"><div class="ei">📨</div>Nenhuma mensagem ainda.<br>Clique em "+ Nova Mensagem"</div>'
+    return
+  }
+
+  const delayOpts = [{'v': '0', 'l': '⚡ Imediato'}, {'v': '300', 'l': '5 min'}, {'v': '900', 'l': '15 min'}, {'v': '1800', 'l': '30 min'}, {'v': '3600', 'l': '1 hora'}, {'v': '7200', 'l': '2 horas'}, {'v': '21600', 'l': '6 horas'}, {'v': '43200', 'l': '12 horas'}, {'v': '86400', 'l': '1 dia'}]
+
+  el.innerHTML = msgs.map((m, i) => {
+    const dOpts = delayOpts.map(o =>
+      `<option value="${o.v}" ${String(m.delay)==o.v?'selected':''}>${o.l}</option>`
+    ).join('')
+
+    const groups = (window._botGroups||[]).map(g =>
+      `<option value="${g.id}" ${m.plan?.chat_id==g.id?'selected':''}>${g.title}</option>`
+    ).join('')
+
+    const hasPlan = m.has_plan || false
+    const planPreview = (m.plan?.name && m.plan?.price)
+      ? `<div style="font-size:11px;color:var(--accent);margin-top:6px;">🔘 Botão: "${m.plan.name} | R$ ${Number(m.plan.price).toFixed(2).replace('.',',')}"</div>`
+      : ''
+
+    return `
+    <div class="ds-msg-card" style="margin-bottom:12px;">
+      <div class="ds-header-row" style="margin-bottom:14px;">
+        <div class="seq-num">${i+1}</div>
+        <span style="font-size:13px;font-weight:700;">Mensagem ${i+1}</span>
+        <span style="font-size:12px;color:var(--text-muted);">· Enviar após:</span>
+        <select class="delay-select" onchange="state.upsell.msgs[${i}].delay=parseInt(this.value);markUnsaved()">
+          ${dOpts}
+        </select>
+        <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);" onclick="removeUpsellMsg(${i})">🗑️</button>
+      </div>
+
+      <div class="rich-toolbar">
+        <button class="rich-btn"><b>B</b></button>
+        <button class="rich-btn"><i>I</i></button>
+        <button class="rich-btn">&lt;&gt;</button>
+      </div>
+      <textarea class="rich-area" style="min-height:90px;" id="upsell-msg-${i}"
+        placeholder="🔥 {nome}, temos uma oferta exclusiva pra você!&#10;&#10;Por ter comprado {plano}, você tem acesso a..."
+        oninput="state.upsell.msgs[${i}].msg=this.value;markUnsaved()">${m.msg||''}</textarea>
+      <div class="var-tags" style="margin-top:6px;margin-bottom:14px;">
+        <span class="var-tag" onclick="appendToUpsellMsg(${i},'{nome}')">&#123;nome&#125;</span>
+        <span class="var-tag" onclick="appendToUpsellMsg(${i},'{plano}')">&#123;plano&#125;</span>
+        <span class="var-tag" onclick="appendToUpsellMsg(${i},'{valor}')">&#123;valor&#125;</span>
+      </div>
+
+      <!-- Plano opcional -->
+      <div style="border-top:1px solid var(--border-subtle);padding-top:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPlan?'12px':'0'};">
+          <div style="font-size:13px;font-weight:600;">💳 Incluir Plano</div>
+          <div class="toggle ${hasPlan?'on':''}" onclick="toggleUpsellMsgPlan(${i})"></div>
+        </div>
+        <div id="upsell-plan-box-${i}" style="display:${hasPlan?'block':'none'};">
+          <div class="form-row" style="margin-top:8px;">
+            <div class="form-group">
+              <label class="form-label">Nome do Plano</label>
+              <input class="form-control" value="${m.plan?.name||''}" placeholder="Ex: Pack VIP"
+                oninput="state.upsell.msgs[${i}].plan.name=this.value;renderUpsellMsgs();markUnsaved()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preço (R$)</label>
+              <input class="form-control" type="number" value="${m.plan?.price||''}" placeholder="97.00" step="0.01"
+                oninput="state.upsell.msgs[${i}].plan.price=this.value;renderUpsellMsgs();markUnsaved()">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Dias de Acesso</label>
+              <select class="form-control" onchange="state.upsell.msgs[${i}].plan.days=parseInt(this.value);markUnsaved()">
+                ${[1,3,7,14,15,30,60,90,180,365].map(d =>
+                  `<option value="${d}" ${(m.plan?.days||30)==d?'selected':''}>${d} ${d===1?'dia':'dias'}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Grupo de Entrega</label>
+              <select class="form-control" onchange="state.upsell.msgs[${i}].plan.chat_id=this.value;markUnsaved()">
+                <option value="">Selecionar grupo...</option>
+                ${groups}
+              </select>
+            </div>
+          </div>
+          ${planPreview}
+        </div>
+      </div>
+    </div>`
+  }).join('')
+}
+
+function toggleUpsellMsgPlan(i) {
+  if(!state.upsell.msgs[i].plan) state.upsell.msgs[i].plan = { name:'', price:'', days:30, chat_id:'' }
+  state.upsell.msgs[i].has_plan = !state.upsell.msgs[i].has_plan
+  renderUpsellMsgs()
+  markUnsaved()
+}
+
+function appendToUpsellMsg(i, v) {
+  state.upsell.msgs[i].msg = (state.upsell.msgs[i].msg||'') + v
+  renderUpsellMsgs()
+  markUnsaved()
+}
+
 function toggleUpsellDelay() {
   // mantido para compatibilidade
 }
@@ -1998,17 +2053,8 @@ async function saveFunil() {
   state.boasvindas.cta_url    = document.getElementById('bv-cta-url').value;
 
   // Upsell
-  state.upsell.active   = document.getElementById('toggle-upsell-active').classList.contains('on');
-  state.upsell.delay    = parseInt(document.getElementById('upsell-delay').value) || 0;
-  state.upsell.msg      = document.getElementById('upsell-msg')?.value || '';
-  state.upsell.has_plan = document.getElementById('toggle-upsell-plano').classList.contains('on');
-  state.upsell.plan = {
-    name:     document.getElementById('upsell-plan-name')?.value || '',
-    price:    document.getElementById('upsell-plan-price')?.value || '',
-    days:     parseInt(document.getElementById('upsell-plan-days')?.value) || 30,
-    chat_id:  document.getElementById('upsell-plan-chat-id')?.value || '',
-    gateway:  'nexuspag',
-  };
+  state.upsell.active = document.getElementById('toggle-upsell-active').classList.contains('on');
+  // msgs já estão atualizadas no state em tempo real
   state.delivery_url = document.getElementById('delivery-url').value;
 
   // Pagamentos — PIX Gerado
