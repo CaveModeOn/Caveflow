@@ -324,6 +324,17 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
   color: var(--text-primary); padding: 5px 10px; font-size: 12px; outline: none; font-family: inherit;
 }
 
+/* ── CTA BUTTON ── */
+.cta-btn-preview {
+  display:inline-flex; align-items:center; gap:6px; padding:8px 16px;
+  background:var(--accent); color:#fff; border-radius:6px; font-size:13px;
+  font-weight:600; margin-top:8px; pointer-events:none;
+}
+.pg-midia-box {
+  border:1px dashed var(--border); border-radius:var(--radius);
+  padding:14px; margin:12px 0; background:var(--bg-elevated);
+}
+
 /* ── TOAST ── */
 .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
 .toast {
@@ -469,6 +480,42 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
         <span class="var-tag" onclick="insertVar('bv-msg','{saudacao}')">&#123;saudacao&#125;</span>
         <span class="var-tag" onclick="insertVar('bv-msg','{uf}')">&#123;uf&#125;</span>
         <span class="var-tag" onclick="insertVar('bv-msg','{username}')">&#123;username&#125;</span>
+      </div>
+    </div>
+
+    <!-- CTA nas Boas-vindas -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">🔘 Botão CTA</div>
+          <div style="font-size:12px;color:var(--text-muted);">Botão exibido logo abaixo da mensagem de boas-vindas</div>
+        </div>
+        <div class="toggle" id="toggle-bv-cta" onclick="this.classList.toggle('on');toggleBvCta()"></div>
+      </div>
+
+      <div id="bv-cta-box" style="display:none;">
+        <div class="form-group">
+          <label class="form-label">Mensagem acima do botão</label>
+          <input class="form-control" id="bv-cta-msg" placeholder="Ex: 👇 Clique abaixo para ver os planos"
+            oninput="updateBvCtaPreview()">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Texto do botão <span class="req">*</span></label>
+            <input class="form-control" id="bv-cta-text" placeholder="Ex: 🔥 Ver planos agora"
+              oninput="updateBvCtaPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">URL do botão (opcional)</label>
+            <input class="form-control" id="bv-cta-url" placeholder="https://... (deixe vazio para usar callback)">
+          </div>
+        </div>
+        <!-- Preview -->
+        <div style="background:var(--bg-elevated);border-radius:var(--radius-sm);padding:12px;margin-top:4px;">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">Preview:</div>
+          <div id="bv-cta-msg-preview" style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;"></div>
+          <div class="cta-btn-preview" id="bv-cta-btn-preview">Texto do botão</div>
+        </div>
       </div>
     </div>
   </div>
@@ -702,42 +749,81 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
 
     <!-- PIX Gerado -->
     <div id="pg-panel-gerado">
+
+      <!-- Mídia PIX Gerado -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">🖼️ Mídia do PIX Gerado</div>
+            <div style="font-size:12px;color:var(--text-muted);">Imagem ou vídeo enviado junto com a mensagem</div>
+          </div>
+          <div class="toggle" id="toggle-pg-gerado-midia" onclick="this.classList.toggle('on');togglePgMidia('gerado')"></div>
+        </div>
+        <div id="pg-gerado-midia-box" class="pg-midia-box" style="display:none;">
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn btn-outline btn-sm pg-midia-type-btn active" data-type="image" onclick="selectPgMidiaType('gerado',this)">🖼️ Imagem</button>
+            <button class="btn btn-outline btn-sm pg-midia-type-btn" data-type="video" onclick="selectPgMidiaType('gerado',this)">🎬 Vídeo</button>
+          </div>
+          <div class="upload-area" ondragover="this.classList.add('dragover');event.preventDefault()"
+            ondragleave="this.classList.remove('dragover')" ondrop="handlePgMidiaDropped(event,'gerado')">
+            <input type="file" accept="image/*,video/*" onchange="handlePgMidiaFile(this.files[0],'gerado')">
+            <div id="pg-gerado-midia-placeholder">
+              <div style="font-size:24px;margin-bottom:6px;">📎</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary);">Clique ou arraste aqui</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">JPG, PNG, MP4 — máx. 20MB</div>
+            </div>
+            <img id="pg-gerado-midia-preview-img" class="upload-preview" style="display:none;">
+            <video id="pg-gerado-midia-preview-vid" class="upload-preview" style="display:none;" controls muted></video>
+          </div>
+          <div class="upload-progress" id="pg-gerado-midia-progress" style="display:none;">
+            <div class="upload-progress-fill" id="pg-gerado-midia-fill" style="width:0%"></div>
+          </div>
+          <div id="pg-gerado-midia-info" style="display:none;margin-top:6px;font-size:12px;color:var(--success);">✅ Mídia salva</div>
+          <input type="hidden" id="pg-gerado-midia-url" value="">
+          <input type="hidden" id="pg-gerado-midia-type" value="image">
+        </div>
+      </div>
+
+      <!-- Mensagem PIX Gerado -->
       <div class="card">
         <div class="card-title">⚡ Mensagem de PIX Gerado</div>
         <div class="card-sub">Enviada quando o lead gera o código PIX</div>
         <div class="rich-toolbar">
-          <button class="rich-btn" onclick="fmt('bold')" title="B"><b>B</b></button>
-          <button class="rich-btn" onclick="fmt('italic')" title="I"><i>I</i></button>
-          <button class="rich-btn" onclick="fmt('code')" title="<>">&lt;&gt;</button>
+          <button class="rich-btn" onclick="fmt('bold')"><b>B</b></button>
+          <button class="rich-btn" onclick="fmt('italic')"><i>I</i></button>
+          <button class="rich-btn" onclick="fmt('code')">&lt;&gt;</button>
         </div>
-        <textarea class="rich-area" id="pg-gerado-msg" oninput="countChars(this,'pg-gerado-count')" placeholder="✅ PIX gerado com sucesso!&#10;&#10;Valor: R$ {valor}&#10;&#10;{qr_code}&#10;&#10;Copie o código PIX abaixo 👇"></textarea>
+        <textarea class="rich-area" id="pg-gerado-msg" oninput="countChars(this,'pg-gerado-count')"
+          placeholder="✅ PIX gerado com sucesso!&#10;&#10;Valor: R$ {valor}&#10;&#10;Copie o código PIX abaixo 👇"></textarea>
         <div class="char-count"><span id="pg-gerado-count">0</span>/4000</div>
-        <div class="pix-vars">
+        <div class="pix-vars" style="margin-top:8px;">
           <span style="font-size:11px;color:var(--text-muted);align-self:center;">Variáveis:</span>
           <span class="pix-var" onclick="insertVar('pg-gerado-msg','{nome}')">&#123;nome&#125;</span>
           <span class="pix-var" onclick="insertVar('pg-gerado-msg','{plano}')">&#123;plano&#125;</span>
           <span class="pix-var" onclick="insertVar('pg-gerado-msg','{valor}')">&#123;valor&#125;</span>
-          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{qr_code}')">&#123;qr_code&#125;</span>
           <span class="pix-var" onclick="insertVar('pg-gerado-msg','{saudacao}')">&#123;saudacao&#125;</span>
-          <span class="pix-var" onclick="insertVar('pg-gerado-msg','{uf}')">&#123;uf&#125;</span>
         </div>
       </div>
 
+      <!-- CTA PIX Gerado -->
       <div class="card">
-        <div class="card-title">✨ Botões & CTA</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">🔘 Botão CTA — PIX Gerado</div>
+            <div style="font-size:12px;color:var(--text-muted);">Botão enviado após o código PIX</div>
+          </div>
+          <div class="toggle on" id="toggle-pg-gerado-cta" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mensagem acima do botão</label>
+          <input class="form-control" id="cta-msg" value="Após efetuar o pagamento, clique no botão abaixo ⬇️">
+        </div>
         <div class="toggle-row">
           <div class="toggle-info">
-            <div class="toggle-label">Mensagem antes dos botões</div>
-          </div>
-          <div class="toggle on" id="toggle-msg-btn" onclick="this.classList.toggle('on')"></div>
-        </div>
-        <input class="form-control" id="cta-msg" value="Após efetuar o pagamento, clique no botão abaixo ⬇️" style="margin-top:10px;">
-        <div class="toggle-row" style="margin-top:10px;">
-          <div class="toggle-info">
             <div class="toggle-label">Código PIX na mesma mensagem</div>
-            <div class="toggle-desc">PIX será enviado em mensagem separada</div>
+            <div class="toggle-desc">Desative para enviar o código em mensagem separada</div>
           </div>
-          <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          <div class="toggle" id="toggle-pix-same-msg" onclick="this.classList.toggle('on')"></div>
         </div>
         <div id="pg-buttons-list" style="margin-top:12px;display:flex;flex-direction:column;gap:6px;"></div>
         <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPgButton('gerado')">+ Adicionar Botão</button>
@@ -746,17 +832,54 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
 
     <!-- PIX Aprovado -->
     <div id="pg-panel-aprovado" style="display:none;">
+
+      <!-- Mídia PIX Aprovado -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">🖼️ Mídia do Pagamento Aprovado</div>
+            <div style="font-size:12px;color:var(--text-muted);">Imagem ou vídeo de celebração enviado ao cliente</div>
+          </div>
+          <div class="toggle" id="toggle-pg-aprovado-midia" onclick="this.classList.toggle('on');togglePgMidia('aprovado')"></div>
+        </div>
+        <div id="pg-aprovado-midia-box" class="pg-midia-box" style="display:none;">
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <button class="btn btn-outline btn-sm pg-midia-type-btn-aprov active" data-type="image" onclick="selectPgMidiaType('aprovado',this)">🖼️ Imagem</button>
+            <button class="btn btn-outline btn-sm pg-midia-type-btn-aprov" data-type="video" onclick="selectPgMidiaType('aprovado',this)">🎬 Vídeo</button>
+          </div>
+          <div class="upload-area" ondragover="this.classList.add('dragover');event.preventDefault()"
+            ondragleave="this.classList.remove('dragover')" ondrop="handlePgMidiaDropped(event,'aprovado')">
+            <input type="file" accept="image/*,video/*" onchange="handlePgMidiaFile(this.files[0],'aprovado')">
+            <div id="pg-aprovado-midia-placeholder">
+              <div style="font-size:24px;margin-bottom:6px;">🎉</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text-secondary);">Clique ou arraste aqui</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">JPG, PNG, MP4 — máx. 20MB</div>
+            </div>
+            <img id="pg-aprovado-midia-preview-img" class="upload-preview" style="display:none;">
+            <video id="pg-aprovado-midia-preview-vid" class="upload-preview" style="display:none;" controls muted></video>
+          </div>
+          <div class="upload-progress" id="pg-aprovado-midia-progress" style="display:none;">
+            <div class="upload-progress-fill" id="pg-aprovado-midia-fill" style="width:0%"></div>
+          </div>
+          <div id="pg-aprovado-midia-info" style="display:none;margin-top:6px;font-size:12px;color:var(--success);">✅ Mídia salva</div>
+          <input type="hidden" id="pg-aprovado-midia-url" value="">
+          <input type="hidden" id="pg-aprovado-midia-type" value="image">
+        </div>
+      </div>
+
+      <!-- Mensagem PIX Aprovado -->
       <div class="card">
         <div class="card-title">✅ Mensagem de Pagamento Aprovado</div>
         <div class="card-sub">Enviada automaticamente após confirmação do pagamento</div>
         <div class="rich-toolbar">
-          <button class="rich-btn"><b>B</b></button>
-          <button class="rich-btn"><i>I</i></button>
-          <button class="rich-btn">&lt;&gt;</button>
+          <button class="rich-btn" onclick="fmt('bold')"><b>B</b></button>
+          <button class="rich-btn" onclick="fmt('italic')"><i>I</i></button>
+          <button class="rich-btn" onclick="fmt('code')">&lt;&gt;</button>
         </div>
-        <textarea class="rich-area" id="pg-aprovado-msg" oninput="countChars(this,'pg-aprov-count')" placeholder="🎉 Pagamento confirmado, {nome}!&#10;&#10;Seja bem-vindo(a) ao grupo VIP 👑&#10;&#10;Clique no link abaixo para acessar:"></textarea>
+        <textarea class="rich-area" id="pg-aprovado-msg" oninput="countChars(this,'pg-aprov-count')"
+          placeholder="🎉 Pagamento confirmado, {nome}!&#10;&#10;Seja bem-vindo(a) ao grupo VIP 👑"></textarea>
         <div class="char-count"><span id="pg-aprov-count">0</span>/4000</div>
-        <div class="pix-vars">
+        <div class="pix-vars" style="margin-top:8px;">
           <span style="font-size:11px;color:var(--text-muted);align-self:center;">Variáveis:</span>
           <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{nome}')">&#123;nome&#125;</span>
           <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{plano}')">&#123;plano&#125;</span>
@@ -764,12 +887,18 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
           <span class="pix-var" onclick="insertVar('pg-aprovado-msg','{link_entrega}')">&#123;link_entrega&#125;</span>
         </div>
       </div>
-      <div id="pg-aprovado-buttons" style="margin-top:0;">
-        <div class="card">
-          <div class="card-title" style="margin-bottom:12px;">🔘 Botões pós-aprovação</div>
-          <div id="pg-aprov-buttons-list" style="display:flex;flex-direction:column;gap:6px;"></div>
-          <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPgButton('aprovado')">+ Adicionar Botão</button>
+
+      <!-- CTA PIX Aprovado -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">🔘 Botão CTA — Aprovado</div>
+            <div style="font-size:12px;color:var(--text-muted);">Botão enviado após a mensagem de aprovação</div>
+          </div>
+          <div class="toggle on" id="toggle-pg-aprovado-cta" onclick="this.classList.toggle('on')"></div>
         </div>
+        <div id="pg-aprov-buttons-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="addPgButton('aprovado')">+ Adicionar Botão</button>
       </div>
     </div>
   </div>
@@ -975,6 +1104,16 @@ function renderAll() {
   document.getElementById('bv-msg').value = state.boasvindas.msg || '';
   countChars(document.getElementById('bv-msg'), 'bv-count');
 
+  // Restore CTA boas-vindas
+  if(state.boasvindas.cta_active) {
+    document.getElementById('toggle-bv-cta').classList.add('on');
+    document.getElementById('bv-cta-box').style.display = 'block';
+  }
+  document.getElementById('bv-cta-msg').value  = state.boasvindas.cta_msg  || '';
+  document.getElementById('bv-cta-text').value = state.boasvindas.cta_text || '';
+  document.getElementById('bv-cta-url').value  = state.boasvindas.cta_url  || '';
+  updateBvCtaPreview();
+
   // Restore midia if already uploaded
   if(state.boasvindas.midia && state.boasvindas.midia_url) {
     document.getElementById('toggle-midia').classList.add('on');
@@ -990,9 +1129,33 @@ function renderAll() {
     }
     document.getElementById('midia-channel-info').style.display = 'flex';
   }
-  document.getElementById('pg-gerado-msg').value = state.pagamentos.gerado.msg || '';
+  document.getElementById('pg-gerado-msg').value  = state.pagamentos.gerado.msg   || '';
   document.getElementById('pg-aprovado-msg').value = state.pagamentos.aprovado.msg || '';
-  document.getElementById('cta-msg').value = state.pagamentos.gerado.cta_msg || '';
+  document.getElementById('cta-msg').value          = state.pagamentos.gerado.cta_msg || '';
+
+  // Restore PIX Gerado midia
+  if(state.pagamentos.gerado.midia_active && state.pagamentos.gerado.midia_url) {
+    document.getElementById('toggle-pg-gerado-midia').classList.add('on');
+    document.getElementById('pg-gerado-midia-box').style.display = 'block';
+    document.getElementById('pg-gerado-midia-url').value  = state.pagamentos.gerado.midia_url;
+    document.getElementById('pg-gerado-midia-type').value = state.pagamentos.gerado.midia_type || 'image';
+    const t = state.pagamentos.gerado.midia_type || 'image';
+    if(t === 'image') { const i = document.getElementById('pg-gerado-midia-preview-img'); i.src = state.pagamentos.gerado.midia_url; i.style.display = 'block'; }
+    else              { const v = document.getElementById('pg-gerado-midia-preview-vid'); v.src = state.pagamentos.gerado.midia_url; v.style.display = 'block'; }
+    document.getElementById('pg-gerado-midia-info').style.display = 'block';
+  }
+
+  // Restore PIX Aprovado midia
+  if(state.pagamentos.aprovado.midia_active && state.pagamentos.aprovado.midia_url) {
+    document.getElementById('toggle-pg-aprovado-midia').classList.add('on');
+    document.getElementById('pg-aprovado-midia-box').style.display = 'block';
+    document.getElementById('pg-aprovado-midia-url').value  = state.pagamentos.aprovado.midia_url;
+    document.getElementById('pg-aprovado-midia-type').value = state.pagamentos.aprovado.midia_type || 'image';
+    const t = state.pagamentos.aprovado.midia_type || 'image';
+    if(t === 'image') { const i = document.getElementById('pg-aprovado-midia-preview-img'); i.src = state.pagamentos.aprovado.midia_url; i.style.display = 'block'; }
+    else              { const v = document.getElementById('pg-aprovado-midia-preview-vid'); v.src = state.pagamentos.aprovado.midia_url; v.style.display = 'block'; }
+    document.getElementById('pg-aprovado-midia-info').style.display = 'block';
+  }
 
   // Delivery
   document.getElementById('delivery-url').value = state.delivery_url || '';
@@ -1558,6 +1721,111 @@ function toggleUpsellDelivery() {
   if(type === 'group') input.placeholder = 'https://t.me/joinchat/...';
   if(type === 'msg')   input.placeholder = 'Mensagem de entrega...';
 }
+
+// ═══════════════════════════════════════════════════════════
+//  CTA — BOAS-VINDAS
+// ═══════════════════════════════════════════════════════════
+function toggleBvCta() {
+  const on = document.getElementById('toggle-bv-cta').classList.contains('on')
+  document.getElementById('bv-cta-box').style.display = on ? 'block' : 'none'
+  state.boasvindas.cta_active = on
+  markUnsaved()
+}
+
+function updateBvCtaPreview() {
+  const msg  = document.getElementById('bv-cta-msg').value
+  const text = document.getElementById('bv-cta-text').value
+  document.getElementById('bv-cta-msg-preview').textContent = msg
+  document.getElementById('bv-cta-btn-preview').textContent = text || 'Texto do botão'
+  markUnsaved()
+}
+
+// ═══════════════════════════════════════════════════════════
+//  MÍDIA — PAGAMENTOS (PIX Gerado / Aprovado)
+// ═══════════════════════════════════════════════════════════
+function togglePgMidia(type) {
+  const on    = document.getElementById(`toggle-pg-${type}-midia`).classList.contains('on')
+  document.getElementById(`pg-${type}-midia-box`).style.display = on ? 'block' : 'none'
+  state.pagamentos[type].midia_active = on
+  markUnsaved()
+}
+
+function selectPgMidiaType(type, el) {
+  const btnClass = type === 'gerado' ? '.pg-midia-type-btn' : '.pg-midia-type-btn-aprov'
+  document.querySelectorAll(btnClass).forEach(b => b.classList.remove('active'))
+  el.classList.add('active')
+  document.getElementById(`pg-${type}-midia-type`).value = el.dataset.type
+  state.pagamentos[type].midia_type = el.dataset.type
+  markUnsaved()
+}
+
+function handlePgMidiaDropped(e, type) {
+  e.preventDefault()
+  const file = e.dataTransfer.files[0]
+  if(file) handlePgMidiaFile(file, type)
+}
+
+async function handlePgMidiaFile(file, type) {
+  if(!file) return
+  if(file.size > 20 * 1024 * 1024) { toast('Arquivo muito grande. Máx 20MB.', 'error'); return }
+
+  // Auto-detectar tipo
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm)$/i.test(file.name)
+  const midiaType = isVideo ? 'video' : 'image'
+
+  // Atualizar botões
+  const btnClass = type === 'gerado' ? '.pg-midia-type-btn' : '.pg-midia-type-btn-aprov'
+  document.querySelectorAll(btnClass).forEach(b => b.classList.remove('active'))
+  document.querySelector(`${btnClass}[data-type="${midiaType}"]`)?.classList.add('active')
+  document.getElementById(`pg-${type}-midia-type`).value = midiaType
+  state.pagamentos[type].midia_type = midiaType
+
+  // Preview local
+  const url = URL.createObjectURL(file)
+  if(midiaType === 'image') {
+    const img = document.getElementById(`pg-${type}-midia-preview-img`)
+    img.src = url; img.style.display = 'block'
+    document.getElementById(`pg-${type}-midia-preview-vid`).style.display = 'none'
+  } else {
+    const vid = document.getElementById(`pg-${type}-midia-preview-vid`)
+    vid.src = url; vid.style.display = 'block'
+    document.getElementById(`pg-${type}-midia-preview-img`).style.display = 'none'
+  }
+
+  // Upload Supabase Storage
+  const progressEl = document.getElementById(`pg-${type}-midia-progress`)
+  const fillEl     = document.getElementById(`pg-${type}-midia-fill`)
+  const infoEl     = document.getElementById(`pg-${type}-midia-info`)
+  progressEl.style.display = 'block'
+  fillEl.style.width = '20%'
+
+  try {
+    const { data: { session } } = await supa.auth.getSession()
+    if(!session) { toast('Faça login primeiro.', 'error'); return }
+
+    const ext  = file.name.split('.').pop()
+    const path = `${session.user.id}/funils/${FUNIL_ID||'temp'}/pg_${type}_${Date.now()}.${ext}`
+    fillEl.style.width = '50%'
+
+    const { data, error } = await supa.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: true })
+    fillEl.style.width = '90%'
+    if(error) throw new Error(error.message)
+
+    const { data: urlData } = supa.storage.from('media').getPublicUrl(path)
+    document.getElementById(`pg-${type}-midia-url`).value = urlData.publicUrl
+    state.pagamentos[type].midia_url = urlData.publicUrl
+
+    fillEl.style.width = '100%'
+    setTimeout(() => { progressEl.style.display = 'none'; fillEl.style.width = '0%' }, 600)
+    infoEl.style.display = 'block'
+    toast(`✅ Mídia do ${type === 'gerado' ? 'PIX Gerado' : 'Aprovado'} salva!`)
+    markUnsaved()
+  } catch(e) {
+    progressEl.style.display = 'none'
+    toast('Erro no upload: ' + e.message, 'error')
+  }
+}
+
 function toggleOrderBump() {
   const on = document.getElementById('toggle-ob').classList.contains('on');
   document.getElementById('ob-config').style.display = on ? 'block' : 'none';
@@ -1619,22 +1887,42 @@ async function saveFunil() {
 
   // Collect state from DOM
   state.name = document.getElementById('funil-title-input').value.trim() || 'Meu Funil';
-  state.boasvindas.msg      = document.getElementById('bv-msg').value;
-  state.boasvindas.midia_url= document.getElementById('midia-url').value;
+  state.boasvindas.msg        = document.getElementById('bv-msg').value;
+  state.boasvindas.midia_url  = document.getElementById('midia-url').value;
   state.boasvindas.midia_type = document.getElementById('midia-type').value || state.boasvindas.midia_type || 'image';
+
+  // CTA boas-vindas
+  state.boasvindas.cta_active = document.getElementById('toggle-bv-cta').classList.contains('on');
+  state.boasvindas.cta_msg    = document.getElementById('bv-cta-msg').value;
+  state.boasvindas.cta_text   = document.getElementById('bv-cta-text').value;
+  state.boasvindas.cta_url    = document.getElementById('bv-cta-url').value;
+
   // Upsell plan
   state.upsell.plan = {
-    name:     document.getElementById('upsell-plan-name').value,
-    price:    document.getElementById('upsell-plan-price').value,
-    gateway:  document.getElementById('upsell-plan-gateway').value,
+    name:          document.getElementById('upsell-plan-name').value,
+    price:         document.getElementById('upsell-plan-price').value,
+    gateway:       document.getElementById('upsell-plan-gateway').value,
     delivery_type: document.getElementById('upsell-plan-delivery-type').value,
-    delivery: document.getElementById('upsell-plan-delivery').value,
-    msg:      document.getElementById('upsell-plan-msg').value,
+    delivery:      document.getElementById('upsell-plan-delivery').value,
+    msg:           document.getElementById('upsell-plan-msg').value,
   };
   state.delivery_url = document.getElementById('delivery-url').value;
-  state.pagamentos.gerado.msg     = document.getElementById('pg-gerado-msg').value;
-  state.pagamentos.gerado.cta_msg = document.getElementById('cta-msg').value;
-  state.pagamentos.aprovado.msg   = document.getElementById('pg-aprovado-msg').value;
+
+  // Pagamentos — PIX Gerado
+  state.pagamentos.gerado.msg          = document.getElementById('pg-gerado-msg').value;
+  state.pagamentos.gerado.cta_msg      = document.getElementById('cta-msg').value;
+  state.pagamentos.gerado.midia_active = document.getElementById('toggle-pg-gerado-midia').classList.contains('on');
+  state.pagamentos.gerado.midia_url    = document.getElementById('pg-gerado-midia-url').value;
+  state.pagamentos.gerado.midia_type   = document.getElementById('pg-gerado-midia-type').value || 'image';
+  state.pagamentos.gerado.cta_active   = document.getElementById('toggle-pg-gerado-cta').classList.contains('on');
+
+  // Pagamentos — PIX Aprovado
+  state.pagamentos.aprovado.msg          = document.getElementById('pg-aprovado-msg').value;
+  state.pagamentos.aprovado.midia_active = document.getElementById('toggle-pg-aprovado-midia').classList.contains('on');
+  state.pagamentos.aprovado.midia_url    = document.getElementById('pg-aprovado-midia-url').value;
+  state.pagamentos.aprovado.midia_type   = document.getElementById('pg-aprovado-midia-type').value || 'image';
+  state.pagamentos.aprovado.cta_active   = document.getElementById('toggle-pg-aprovado-cta').classList.contains('on');
+
   state.orderbump.name     = document.getElementById('ob-name')?.value || '';
   state.orderbump.price    = document.getElementById('ob-price')?.value || '';
   state.orderbump.desc     = document.getElementById('ob-desc')?.value || '';
