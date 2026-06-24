@@ -517,6 +517,21 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
         </div>
       </div>
     </div>
+
+    <!-- Botões de Link extras -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">🔗 Botões de Link</div>
+          <div style="font-size:12px;color:var(--text-muted);">Botões com links externos exibidos nas boas-vindas</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="addBvLinkBtn()">+ Botão</button>
+      </div>
+      <div id="bv-link-btns-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="bv-link-btns-empty" style="font-size:12px;color:var(--text-muted);display:none;">
+        Nenhum botão. Clique em "+ Botão" para adicionar.
+      </div>
+    </div>
   </div>
 
   <!-- ── PLANOS ── -->
@@ -1053,6 +1068,10 @@ function renderAll() {
   // Fill text fields
   document.getElementById('bv-msg').value = state.boasvindas.msg || '';
   countChars(document.getElementById('bv-msg'), 'bv-count');
+
+  // Restore link buttons boas-vindas
+  if(!state.boasvindas.link_btns) state.boasvindas.link_btns = []
+  renderBvLinkBtns()
 
   // Restore CTA boas-vindas
   if(state.boasvindas.cta_active) {
@@ -1665,6 +1684,41 @@ async function loadBotGroups() {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════
+//  BOTÕES DE LINK — BOAS-VINDAS
+// ═══════════════════════════════════════════════════════════
+function addBvLinkBtn() {
+  if(!state.boasvindas.link_btns) state.boasvindas.link_btns = []
+  state.boasvindas.link_btns.push({ text: '', url: '' })
+  renderBvLinkBtns()
+  markUnsaved()
+}
+
+function renderBvLinkBtns() {
+  const btns  = state.boasvindas.link_btns || []
+  const el    = document.getElementById('bv-link-btns-list')
+  const empty = document.getElementById('bv-link-btns-empty')
+  if(!el) return
+
+  if(!btns.length) {
+    el.innerHTML = ''
+    if(empty) empty.style.display = 'block'
+    return
+  }
+  if(empty) empty.style.display = 'none'
+
+  el.innerHTML = btns.map((b, i) => `
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input class="form-control" style="flex:1;" placeholder="Texto do botão"
+        value="${b.text||''}" oninput="state.boasvindas.link_btns[${i}].text=this.value;markUnsaved()">
+      <input class="form-control" style="flex:2;" placeholder="https://..."
+        value="${b.url||''}" oninput="state.boasvindas.link_btns[${i}].url=this.value;markUnsaved()">
+      <button onclick="state.boasvindas.link_btns.splice(${i},1);renderBvLinkBtns();markUnsaved()"
+        style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;flex-shrink:0;">✕</button>
+    </div>`).join('')
+}
+
 // ── Upsell delay ───────────────────────────────────────────
 const DELAY_LABELS = {
   0: '⚡ O upsell será enviado imediatamente após o pagamento confirmado.',
@@ -1771,16 +1825,44 @@ function renderUpsellMsgs() {
         <span class="var-tag" onclick="appendToUpsellMsg(${i},'{valor}')">&#123;valor&#125;</span>
       </div>
 
-      <!-- Plano opcional -->
+      <!-- Botões de link -->
+      <div style="border-top:1px solid var(--border-subtle);padding-top:12px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:600;">🔗 Botões de Link</div>
+          <button class="btn btn-outline btn-sm" onclick="addUpsellLinkBtn(${i})">+ Botão</button>
+        </div>
+        <div id="upsell-link-btns-${i}">
+          ${(m.link_btns||[]).map((b,bi) => `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+              <input class="form-control" style="flex:1;" placeholder="Texto do botão"
+                value="${b.text||''}" oninput="state.upsell.msgs[${i}].link_btns[${bi}].text=this.value;markUnsaved()">
+              <input class="form-control" style="flex:2;" placeholder="https://..."
+                value="${b.url||''}" oninput="state.upsell.msgs[${i}].link_btns[${bi}].url=this.value;markUnsaved()">
+              <button onclick="state.upsell.msgs[${i}].link_btns.splice(${bi},1);renderUpsellMsgs();markUnsaved()"
+                style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;">✕</button>
+            </div>`).join('') || '<div style="font-size:12px;color:var(--text-muted);">Nenhum botão. Clique em "+ Botão" para adicionar.</div>'}
+        </div>
+      </div>
+
+      <!-- Plano / Pack opcional -->
       <div style="border-top:1px solid var(--border-subtle);padding-top:12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${hasPlan?'12px':'0'};">
-          <div style="font-size:13px;font-weight:600;">💳 Incluir Plano</div>
+          <div style="font-size:13px;font-weight:600;">💳 Incluir Plano/Pack</div>
           <div class="toggle ${hasPlan?'on':''}" onclick="toggleUpsellMsgPlan(${i})"></div>
         </div>
         <div id="upsell-plan-box-${i}" style="display:${hasPlan?'block':'none'};">
-          <div class="form-row" style="margin-top:8px;">
+          <div class="form-group" style="margin-top:8px;">
+            <label class="form-label">Tipo</label>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-sm ${(m.plan?.type||'plano')=='plano'?'btn-primary':'btn-outline'}"
+                onclick="state.upsell.msgs[${i}].plan.type='plano';renderUpsellMsgs();markUnsaved()">📦 Plano</button>
+              <button class="btn btn-sm ${(m.plan?.type||'plano')=='pack'?'btn-primary':'btn-outline'}"
+                onclick="state.upsell.msgs[${i}].plan.type='pack';renderUpsellMsgs();markUnsaved()">🎁 Pack</button>
+            </div>
+          </div>
+          <div class="form-row">
             <div class="form-group">
-              <label class="form-label">Nome do Plano</label>
+              <label class="form-label">Nome</label>
               <input class="form-control" value="${m.plan?.name||''}" placeholder="Ex: Pack VIP"
                 oninput="state.upsell.msgs[${i}].plan.name=this.value;renderUpsellMsgs();markUnsaved()">
             </div>
@@ -1823,6 +1905,13 @@ function toggleUpsellMsgPlan(i) {
 
 function appendToUpsellMsg(i, v) {
   state.upsell.msgs[i].msg = (state.upsell.msgs[i].msg||'') + v
+  renderUpsellMsgs()
+  markUnsaved()
+}
+
+function addUpsellLinkBtn(i) {
+  if(!state.upsell.msgs[i].link_btns) state.upsell.msgs[i].link_btns = []
+  state.upsell.msgs[i].link_btns.push({ text: '', url: '' })
   renderUpsellMsgs()
   markUnsaved()
 }
@@ -2045,6 +2134,8 @@ async function saveFunil() {
   state.boasvindas.msg        = document.getElementById('bv-msg').value;
   state.boasvindas.midia_url  = document.getElementById('midia-url').value;
   state.boasvindas.midia_type = document.getElementById('midia-type').value || state.boasvindas.midia_type || 'image';
+
+  // Link btns boas-vindas já atualizados em tempo real no state
 
   // CTA boas-vindas
   state.boasvindas.cta_active = document.getElementById('toggle-bv-cta').classList.contains('on');
