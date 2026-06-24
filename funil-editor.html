@@ -1336,10 +1336,22 @@ function renderPlanos() {
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Descrição (texto enviado junto)</label>
+              <label class="form-label">Descrição</label>
               <textarea class="form-control" rows="2" placeholder="Adicione também o pack extra por apenas R$ {ob_valor}! 🎁"
                 oninput="state.planos[${i}].ob_desc=this.value;markUnsaved()">${p.ob_desc||''}</textarea>
             </div>
+
+            <div class="form-group">
+              <label class="form-label">Tipo de Entrega</label>
+              <select class="form-control" onchange="state.planos[${i}].ob_delivery=this.value;renderPlanos();markUnsaved()">
+                <option value="group"   ${(p.ob_delivery||'group')==='group'  ?'selected':''}>👥 Grupo/Canal Telegram</option>
+                <option value="link"    ${p.ob_delivery==='link'              ?'selected':''}>🔗 Link Externo</option>
+                <option value="msg"     ${p.ob_delivery==='msg'               ?'selected':''}>💬 Mensagem</option>
+                <option value="none"    ${p.ob_delivery==='none'              ?'selected':''}>🚫 Sem entrega (só cobrança)</option>
+              </select>
+            </div>
+
+            ${(p.ob_delivery||'group') === 'group' ? `
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Dias de Acesso</label>
@@ -1356,9 +1368,24 @@ function renderPlanos() {
                   ${(window._botGroups||[]).map(g => `<option value="${g.id}" ${p.ob_chat_id==g.id?'selected':''}>${g.title}</option>`).join('')}
                 </select>
               </div>
-            </div>
+            </div>` : ''}
+
+            ${p.ob_delivery === 'link' ? `
+            <div class="form-group">
+              <label class="form-label">Link de Entrega</label>
+              <input class="form-control" value="${p.ob_link||''}" placeholder="https://..."
+                oninput="state.planos[${i}].ob_link=this.value;markUnsaved()">
+            </div>` : ''}
+
+            ${p.ob_delivery === 'msg' ? `
+            <div class="form-group">
+              <label class="form-label">Mensagem de Entrega</label>
+              <textarea class="form-control" rows="2" placeholder="Aqui está seu conteúdo: ..."
+                oninput="state.planos[${i}].ob_msg_entrega=this.value;markUnsaved()">${p.ob_msg_entrega||''}</textarea>
+            </div>` : ''}
+
             ${p.ob_name && p.ob_price ? `
-            <div style="font-size:11px;color:var(--success);margin-top:4px;">
+            <div style="font-size:11px;color:var(--success);margin-top:8px;padding:8px;background:rgba(0,212,170,0.08);border-radius:4px;">
               🔘 Botão: "✅ Adicionar ${p.ob_name} por R$ ${Number(p.ob_price).toFixed(2).replace('.',',')} "
             </div>` : ''}
           </div>` : ''}
