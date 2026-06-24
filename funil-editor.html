@@ -1395,6 +1395,19 @@ function renderPlanos() {
             <div style="font-size:11px;color:var(--success);margin-top:8px;padding:8px;background:rgba(0,212,170,0.08);border-radius:4px;">
               🔘 Botão: "✅ Adicionar ${p.ob_name} por R$ ${Number(p.ob_price).toFixed(2).replace('.',',')} "
             </div>` : ''}
+
+            <div class="form-row" style="margin-top:12px;">
+              <div class="form-group">
+                <label class="form-label">✅ Texto do botão Aceitar</label>
+                <input class="form-control" value="${p.ob_btn_sim||''}" placeholder="Sim! Quero adicionar"
+                  oninput="state.planos[${i}].ob_btn_sim=this.value;markUnsaved()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">❌ Texto do botão Recusar</label>
+                <input class="form-control" value="${p.ob_btn_nao||''}" placeholder="Não, obrigado"
+                  oninput="state.planos[${i}].ob_btn_nao=this.value;markUnsaved()">
+              </div>
+            </div>
           </div>` : ''}
         </div>
 
