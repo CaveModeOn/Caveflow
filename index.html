@@ -1179,6 +1179,25 @@ textarea.form-control { resize: vertical; min-height: 80px; }
           </div>
         </div>
 
+        <!-- Métricas de conversão -->
+        <div class="grid-3" style="margin-bottom:20px;">
+          <div class="card" style="text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Start → PIX Gerado</div>
+            <div style="font-size:32px;font-weight:800;color:var(--accent);" id="conv-start-pix">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="conv-start-pix-abs">— leads → — PIX</div>
+          </div>
+          <div class="card" style="text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">PIX Gerado → Pago</div>
+            <div style="font-size:32px;font-weight:800;color:var(--success);" id="conv-pix-pago">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="conv-pix-pago-abs">— gerados → — pagos</div>
+          </div>
+          <div class="card" style="text-align:center;">
+            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Start → Pagou</div>
+            <div style="font-size:32px;font-weight:800;color:var(--warning);" id="conv-start-pago">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px;" id="conv-start-pago-abs">conversão geral</div>
+          </div>
+        </div>
+
         <div class="card" style="margin-bottom:20px;">
           <div class="card-header"><span class="card-title">Performance Detalhada</span></div>
           <div class="table-wrap">
@@ -1208,7 +1227,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
             <input type="date" id="tx-date-from" style="width:140px;">
             <input type="date" id="tx-date-to" style="width:140px;">
             <select id="tx-gateway" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:6px;font-family:inherit;outline:none;">
-              <option value="">Todos Gateways</option><option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+              <option value="">Todos Gateways</option><option value="nexuspag">NexusPag</option>
             </select>
             <select id="tx-status" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);padding:7px 12px;border-radius:6px;font-family:inherit;outline:none;">
               <option value="">Todos Status</option><option>Aprovado</option><option>Pendente</option><option>Recusado</option><option>Reembolsado</option>
@@ -1358,7 +1377,7 @@ textarea.form-control { resize: vertical; min-height: 80px; }
                     <select class="form-control" id="disp-bot"></select>
                   </div>
                   <div class="form-group"><label class="form-label">Gateway (se venda)</label>
-                    <select class="form-control" id="disp-gw"><option value="">Nenhum</option><option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option></select>
+                    <select class="form-control" id="disp-gw"><option value="">Nenhum</option><option value="nexuspag">NexusPag</option></select>
                   </div>
                 </div>
               </div>
@@ -2896,7 +2915,7 @@ if(!DB._get('flows')){
 }
 if(!DB._get('transactions')){
   const names=['Ana Costa','Bruno Lima','Carla Mendes','Diego Ramos','Elena Ferreira','Fábio Santos','Gabi Oliveira','Hugo Pereira','Iris Rodrigues','João Alves'];
-  const gws=['TriboPay','Pushinpay','SyncPay','MundPay'];
+  const gws=['NexusPag'];
   const statuses=['Aprovado','Aprovado','Aprovado','Pendente','Recusado'];
   const methods=['PIX','PIX','PIX','Cartão'];
   const txs=[];
@@ -3037,7 +3056,7 @@ async function initDashboardCharts() {
   document.getElementById('kpi-leads-delta').textContent = leadsCount > 0 ? `${leadsCount} lead(s) no total` : '— nenhum lead ainda'
 
   // ── Gateways ───────────────────────────────────────────────
-  const gwNames = ['tribopay','pushinpay','syncpay','mundpay']
+  const gwNames = ['nexuspag']
   const gwColors = ['var(--success)','var(--accent)','var(--warning)','var(--text-muted)']
   const gwData   = gwNames.map(gw => ({
     name: gw,
@@ -3084,9 +3103,26 @@ async function initDashboardCharts() {
     },
     options:{...cfg}
   })
+
+  // Carregar métricas de conversão
+  if(currentUser) loadConversionMetrics()
 }
 
-async function renderSalesChart(days, txs, leadsCount) {
+async function loadConversionMetrics() {
+  try {
+    const res  = await fetch(`https://unique-joy-production-c535.up.railway.app/api/metrics?user_id=${currentUser.id}`)
+    const data = await res.json()
+    if(!data.ok) return
+
+    const fmt = v => v + '%'
+    document.getElementById('conv-start-pix').textContent      = fmt(data.conv_start_to_pix)
+    document.getElementById('conv-pix-pago').textContent       = fmt(data.conv_pix_to_pago)
+    document.getElementById('conv-start-pago').textContent     = fmt(data.conv_start_to_pago)
+    document.getElementById('conv-start-pix-abs').textContent  = `${data.total_leads} leads → ${data.pix_gerados} PIX gerados`
+    document.getElementById('conv-pix-pago-abs').textContent   = `${data.pix_gerados} gerados → ${data.pix_pagos} pagos`
+    document.getElementById('conv-start-pago-abs').textContent = `conversão geral do funil`
+  } catch(e) { console.warn('[metrics]', e.message) }
+}
   destroyChart('salesLeads')
   const labels = []
   const revenueData = []
@@ -3142,7 +3178,7 @@ function renderDashboardEmpty() {
   document.getElementById('kpi-pix-conv').textContent      = '0%'
   document.getElementById('kpi-card-conv').textContent     = '0%'
   document.getElementById('kpi-ticket').textContent        = 'R$ 0,00'
-  document.getElementById('gw-cards').innerHTML = ['TriboPay','Pushinpay','SyncPay','MundPay'].map(n=>`
+  document.getElementById('gw-cards').innerHTML = ['NexusPag'].map(n=>`
     <div class="card"><div style="font-weight:700;font-size:14px;margin-bottom:8px;">${n}</div>
     <span class="badge badge-muted">○ Sem dados</span></div>`).join('')
   document.getElementById('perf-tbody').innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">Faça login para ver seus dados reais</td></tr>`
@@ -4305,10 +4341,7 @@ async function renderIntegrations() {
     });
   }
   const gws = [
-    {name:'TriboPay',  color:'#00d4aa', bg:'rgba(0,212,170,0.1)',   status: gwStats['tribopay']?.txs  > 0 ? 'connected' : 'disconnected', conv: gwStats['tribopay']?.conv||0,  rev: gwStats['tribopay']?.rev||0,  txs: gwStats['tribopay']?.txs||0},
-    {name:'Pushinpay', color:'#6c63ff', bg:'rgba(108,99,255,0.1)',  status: gwStats['pushinpay']?.txs > 0 ? 'connected' : 'disconnected', conv: gwStats['pushinpay']?.conv||0, rev: gwStats['pushinpay']?.rev||0, txs: gwStats['pushinpay']?.txs||0},
-    {name:'SyncPay',   color:'#ffb347', bg:'rgba(255,179,71,0.1)',  status: gwStats['syncpay']?.txs   > 0 ? 'connected' : 'disconnected', conv: gwStats['syncpay']?.conv||0,   rev: gwStats['syncpay']?.rev||0,   txs: gwStats['syncpay']?.txs||0},
-    {name:'MundPay',   color:'#8b90a7', bg:'rgba(139,144,167,0.1)',status: gwStats['mundpay']?.txs   > 0 ? 'connected' : 'disconnected', conv: gwStats['mundpay']?.conv||0,   rev: gwStats['mundpay']?.rev||0,   txs: gwStats['mundpay']?.txs||0}
+    {name:'NexusPag', color:'#6c63ff', bg:'rgba(108,99,255,0.1)', status: gwStats['nexuspag']?.txs > 0 ? 'connected' : 'disconnected', conv: gwStats['nexuspag']?.conv||0, rev: gwStats['nexuspag']?.rev||0, txs: gwStats['nexuspag']?.txs||0}
   ];
   const stMap = {connected:'badge-success', partial:'badge-warning', disconnected:'badge-muted'};
   const stLabel = {connected:'● Conectado', partial:'● Parcial', disconnected:'○ Desconectado'};

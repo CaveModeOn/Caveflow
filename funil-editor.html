@@ -557,7 +557,7 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
         <div class="form-group">
           <label class="form-label">Gateway</label>
           <select class="form-control" id="upsell-plan-gateway">
-            <option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+            <option value="nexuspag">NexusPag</option>
           </select>
         </div>
         <div class="form-group">
@@ -668,7 +668,7 @@ textarea.form-control { resize: vertical; min-height: 100px; line-height: 1.6; }
         <div class="form-group">
           <label class="form-label">Gateway</label>
           <select class="form-control" id="ob-gateway">
-            <option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+            <option value="nexuspag">NexusPag</option>
           </select>
         </div>
         <div class="form-group">
@@ -865,7 +865,7 @@ let state = {
   planos: [],
   upsell: { active: true, instant: false, seqs: [] },
   downsell: { geral: [], pix: [] },
-  orderbump: { active: false, name: '', price: '', desc: '', gateway: 'TriboPay', delivery: '' },
+  orderbump: { active: false, name: '', price: '', desc: '', gateway: 'nexuspag', delivery: '' },
   packs: [],
   pagamentos: {
     gerado: { msg: '', cta_msg: 'Após efetuar o pagamento, clique no botão abaixo ⬇️', buttons: [] },
@@ -1133,10 +1133,7 @@ function renderPlanos() {
           <div class="form-group">
             <label class="form-label">Gateway</label>
             <select class="form-control" onchange="state.planos[${i}].gateway=this.value;markUnsaved()">
-              <option ${p.gateway=='TriboPay'?'selected':''}>TriboPay</option>
-              <option ${p.gateway=='Pushinpay'?'selected':''}>Pushinpay</option>
-              <option ${p.gateway=='SyncPay'?'selected':''}>SyncPay</option>
-              <option ${p.gateway=='MundPay'?'selected':''}>MundPay</option>
+              <option value='nexuspag'>NexusPag</option>
             </select>
           </div>
           <div class="form-group">
@@ -1151,10 +1148,33 @@ function renderPlanos() {
         </div>
         ${p.delivery && p.delivery !== 'default' ? `
         <div class="form-group">
-          <label class="form-label">${p.delivery==='link'?'URL':'Link do Grupo'}</label>
-          <input class="form-control" value="${p.delivery_url||''}" placeholder="https://..."
+          <label class="form-label">${p.delivery==='link'?'URL do Link':'Link/ID do Grupo'}</label>
+          <input class="form-control" value="${p.delivery_url||''}" placeholder="${p.delivery==='group'?'https://t.me/joinchat/...':'https://...'}"
             oninput="state.planos[${i}].delivery_url=this.value;markUnsaved()">
         </div>` : ''}
+
+        <!-- Dias de acesso e Chat ID -->
+        <div style="background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.15);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;">
+          <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">⏰ Controle de Acesso</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Dias de acesso <span class="req">*</span></label>
+              <select class="form-control" onchange="state.planos[${i}].days=parseInt(this.value);markUnsaved()">
+                ${[1,3,7,14,15,30,60,90,180,365].map(d =>
+                  `<option value="${d}" ${(p.days||30)==d?'selected':''}>${d} ${d===1?'dia':'dias'}</option>`
+                ).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ID do Grupo/Canal</label>
+              <input class="form-control" value="${p.chat_id||''}" placeholder="-1001234567890"
+                oninput="state.planos[${i}].chat_id=this.value;markUnsaved()"
+                title="ID numérico do grupo. Use @userinfobot no Telegram para descobrir.">
+              <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Envie /id para @userinfobot no grupo para obter</div>
+            </div>
+          </div>
+        </div>
+
         <div class="toggle-row">
           <div class="toggle-info"><div class="toggle-label">Preço dinâmico por lead</div><div class="toggle-desc">Gera preço único por Telegram ID</div></div>
           <div class="toggle ${p.dynamic?'on':''}" onclick="state.planos[${i}].dynamic=!state.planos[${i}].dynamic;renderPlanos();markUnsaved()"></div>
@@ -1317,7 +1337,7 @@ function renderPacks() {
             oninput="state.packs[${i}].price=this.value;markUnsaved()"></div>
         <div class="form-group"><label class="form-label">Gateway</label>
           <select class="form-control" onchange="state.packs[${i}].gateway=this.value;markUnsaved()">
-            <option>TriboPay</option><option>Pushinpay</option><option>SyncPay</option><option>MundPay</option>
+            <option value="nexuspag">NexusPag</option>
           </select></div>
       </div>
       <div class="form-group"><label class="form-label">Descrição</label>
@@ -1375,6 +1395,7 @@ function switchTab(id, el) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-'+id)?.classList.add('active');
   el.classList.add('active');
+  if(id === 'planos' && !window._botGroups?.length) loadBotGroups();
 }
 function switchDsTab(tab) {
   const isGeral = tab === 'geral';
@@ -1500,6 +1521,34 @@ function clearMidiaFile() {
   document.getElementById('midia-file-input').value = '';
   state.boasvindas.midia_url = '';
   markUnsaved();
+}
+
+// ── Carregar grupos onde o bot é admin ─────────────────────
+window._botGroups = []
+
+async function loadBotGroups() {
+  try {
+    // Chamar servidor para listar grupos onde o bot é admin
+    const botToken = state.bots?.[0]?.token
+    if(!botToken) { toast('Adicione um bot primeiro na aba Bots.', 'error'); return; }
+
+    const res  = await fetch(`https://unique-joy-production-c535.up.railway.app/api/bots/groups?token=${encodeURIComponent(botToken)}`)
+    const data = await res.json()
+
+    if(data.ok && data.groups?.length) {
+      window._botGroups = data.groups
+      toast(`${data.groups.length} grupo(s) encontrado(s)!`)
+    } else if(data.groups?.length === 0) {
+      toast('Nenhum grupo encontrado. Adicione o bot como admin em um grupo.', 'error')
+    } else {
+      toast(data.error || 'Erro ao buscar grupos.', 'error')
+    }
+
+    // Re-renderizar planos para atualizar dropdowns
+    renderPlanos()
+  } catch(e) {
+    toast('Erro ao conectar ao servidor: ' + e.message, 'error')
+  }
 }
 
 function toggleUpsellDelivery() {
