@@ -1285,7 +1285,7 @@ function renderPlanos() {
             oninput="state.planos[${i}].delivery_url=this.value;markUnsaved()">
         </div>` : ''}
 
-        <!-- Dias de acesso e Chat ID -->
+        <!-- Dias de acesso e Grupo de Entrega -->
         <div style="background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.15);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;">
           <div style="font-size:11px;font-weight:600;color:var(--accent);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">⏰ Controle de Acesso</div>
           <div class="form-row">
@@ -1298,11 +1298,18 @@ function renderPlanos() {
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">ID do Grupo/Canal</label>
-              <input class="form-control" value="${p.chat_id||''}" placeholder="-1001234567890"
-                oninput="state.planos[${i}].chat_id=this.value;markUnsaved()"
-                title="ID numérico do grupo. Use @userinfobot no Telegram para descobrir.">
-              <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">Envie /id para @userinfobot no grupo para obter</div>
+              <label class="form-label">Grupo/Canal de Entrega</label>
+              <select class="form-control" onchange="state.planos[${i}].chat_id=this.value;markUnsaved()">
+                <option value="">Selecionar grupo...</option>
+                ${(window._botGroups||[]).map(g =>
+                  `<option value="${g.id}" ${p.chat_id==g.id?'selected':''}>${g.title}</option>`
+                ).join('')}
+              </select>
+              ${!(window._botGroups||[]).length ? `
+              <div style="font-size:10px;color:var(--warning);margin-top:4px;">
+                ⚠️ Nenhum grupo detectado. Adicione o bot como admin em um grupo e clique em
+                <span onclick="loadBotGroups().then(()=>renderPlanos())" style="color:var(--accent);cursor:pointer;text-decoration:underline;">🔄 Atualizar</span>
+              </div>` : ''}
             </div>
           </div>
         </div>
@@ -1750,6 +1757,8 @@ async function loadBotGroups() {
     if(data.ok && data.groups?.length) {
       window._botGroups = data.groups
       toast(`${data.groups.length} grupo(s) encontrado(s)!`)
+      renderPlanos() // atualizar dropdowns de grupo nos planos
+      renderUpsellMsgs() // atualizar dropdowns no upsell
     } else if(data.groups?.length === 0) {
       toast('Nenhum grupo encontrado. Adicione o bot como admin em um grupo.', 'error')
     } else {
